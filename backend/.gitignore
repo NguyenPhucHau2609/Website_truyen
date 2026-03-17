@@ -3,7 +3,13 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-
+Web_Tuyen_Online_Auth_API.postman_collection.json
+new_app.log
+app.log
+compile_utf8.log
+compile.log
+curl_out.txt
+application.properties
 ### STS ###
 .apt_generated
 .classpath
