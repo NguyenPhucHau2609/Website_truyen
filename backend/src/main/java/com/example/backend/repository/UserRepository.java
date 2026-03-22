@@ -18,4 +18,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     Boolean existsByEmail(String email);
 
     Optional<User> findByResetToken(String resetToken);
+
+    long countByCreatedAtGreaterThan(java.util.Date date);
 }

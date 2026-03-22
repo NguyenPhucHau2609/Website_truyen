@@ -11,4 +11,6 @@ public interface ChapterRepository extends MongoRepository<Chapter, String> {
     Chapter findByStoryIdAndChapterNumber(String storyId, Integer chapterNumber);
     long countByStoryId(String storyId);
     void deleteByStoryId(String storyId);
+
+    long countByCreatedAtGreaterThan(java.util.Date date);
 }

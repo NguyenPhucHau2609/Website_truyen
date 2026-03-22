@@ -9,6 +9,7 @@ import {
   updateReportStatus, uploadImage, uploadMangaPages
 } from '../services/api';
 import api from '../services/api';
+import Statistics from './Statistics';
 
 export default function Admin() {
   const { user, isAdmin } = useAuth();
@@ -189,9 +190,10 @@ export default function Admin() {
     <div className="container">
       <h1 className="page-title">⚙️ Quản trị hệ thống</h1>
       <div className="tabs">
-        {['dashboard', 'stories', 'categories', 'authors', 'chapters', 'reports'].map(t => (
+        {['dashboard', 'statistics', 'stories', 'categories', 'authors', 'chapters', 'reports'].map(t => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
             {t === 'dashboard' && '📊 Dashboard'}
+            {t === 'statistics' && '📈 Thống kê'}
             {t === 'stories' && `📚 Truyện (${stories.length})`}
             {t === 'categories' && `📁 Thể loại (${categories.length})`}
             {t === 'authors' && `✍️ Tác giả (${authors.length})`}
@@ -210,6 +212,8 @@ export default function Admin() {
           <div className="stat-card"><div className="stat-value">{stats.pendingReports || 0}</div><div className="stat-label">Báo lỗi chờ</div></div>
         </div>
       )}
+
+      {tab === 'statistics' && <Statistics embedded />}
 
       {tab === 'stories' && (
         <div>

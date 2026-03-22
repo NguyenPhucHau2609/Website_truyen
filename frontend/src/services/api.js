@@ -81,6 +81,9 @@ export const updateReportStatus = (id, status) => api.put(`/reports/${id}/status
 
 // Admin
 export const getAdminStats = () => api.get('/admin/stats');
+export const getTrendStats = () => api.get('/admin/stats/trends');
+export const getHotStories = () => api.get('/admin/stats/hot');
+export const getDistributionData = () => api.get('/admin/stats/distribution');
 
 // Upload (Cloudinary)
 export const uploadImage = (file) => {
