@@ -140,7 +140,11 @@ export default function Header() {
 
               <div ref={menuRef} className="user-menu">
                 <button className="user-menu-btn" onClick={() => setShowMenu(!showMenu)}>
-                  <span className="user-avatar">{user.username?.[0]?.toUpperCase()}</span>
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.username} className="user-avatar-img" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="user-avatar">{user.username?.[0]?.toUpperCase()}</span>
+                  )}
                   {user.username}
                 </button>
                 {showMenu && (

@@ -109,7 +109,11 @@ export default function Profile() {
   return (
     <div className="container">
       <div className="profile-header">
-        <div className="profile-avatar">{user.username?.[0]?.toUpperCase()}</div>
+        {user.avatar ? (
+          <img src={user.avatar} alt={user.username} className="profile-avatar-img" referrerPolicy="no-referrer" />
+        ) : (
+          <div className="profile-avatar">{user.username?.[0]?.toUpperCase()}</div>
+        )}
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{user.username}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user.email}</p>

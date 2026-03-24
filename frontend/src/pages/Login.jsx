@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { login } from '../services/api';
+import { login, googleLogin } from '../services/api';
+
+const GOOGLE_CLIENT_ID = '1046290597450-hea7uomj629tv6arefmvpnjutc87jfbe.apps.googleusercontent.com';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -10,6 +12,57 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { loginUser } = useAuth();
   const navigate = useNavigate();
+  const googleBtnRef = useRef(null);
+
+  useEffect(() => {
+    // Wait for Google GSI script to load
+    const initGoogle = () => {
+      if (window.google && window.google.accounts) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+        window.google.accounts.id.renderButton(
+          googleBtnRef.current,
+          {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+          }
+        );
+      }
+    };
+
+    // If script already loaded
+    if (window.google && window.google.accounts) {
+      initGoogle();
+    } else {
+      // Wait for script to load
+      const interval = setInterval(() => {
+        if (window.google && window.google.accounts) {
+          clearInterval(interval);
+          initGoogle();
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  const handleGoogleCallback = async (response) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await googleLogin(response.credential);
+      loginUser(res.data);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Đăng nhập bằng Google thất bại!');
+    }
+    setLoading(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,6 +96,15 @@ export default function Login() {
             {loading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="auth-divider">
+          <span>hoặc</span>
+        </div>
+
+        {/* Google Sign-In Button */}
+        <div className="google-btn-wrapper" ref={googleBtnRef}></div>
+
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
           Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
         </p>
