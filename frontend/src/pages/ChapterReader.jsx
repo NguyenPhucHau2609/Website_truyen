@@ -90,6 +90,7 @@ export default function ChapterReader() {
   const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
   const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
   const isManga = story?.type === 'MANGA';
+  const readerTopOffset = 'var(--header-height, 64px)';
 
   const handleComment = async () => {
     if (!user) return alert('Vui long dang nhap!');
@@ -176,20 +177,24 @@ export default function ChapterReader() {
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '0.5rem',
+        gap: '0.75rem 1rem',
         position: 'sticky',
-        top: 0,
-        zIndex: 100,
+        top: readerTopOffset,
+        zIndex: 80,
         borderBottom: '1px solid var(--border)',
       }}>
-        <Link to={`/story/${storyId}`} style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}>
+        <Link to={`/story/${storyId}`} style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600, flex: '1 1 260px', minWidth: 0, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           ← {story.title}
         </Link>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', flex: '1 1 240px', minWidth: 0, maxWidth: '100%' }}>
           <select
             value={chapterId}
             onChange={(e) => navigate(`/story/${storyId}/chapter/${e.target.value}`)}
             style={{
+              flex: '1 1 220px',
+              width: '100%',
+              minWidth: '180px',
+              maxWidth: '320px',
               padding: '0.35rem 0.6rem',
               borderRadius: '6px',
               background: 'var(--bg-card)',
@@ -213,6 +218,7 @@ export default function ChapterReader() {
                 padding: '0.35rem 0.65rem',
                 cursor: 'pointer',
                 fontSize: '0.85rem',
+                flexShrink: 0,
               }}
             >
               ⚙️
