@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { register } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { register, googleLogin } from '../services/api';
+
+const GOOGLE_CLIENT_ID = '1046290597450-hea7uomj629tv6arefmvpnjutc87jfbe.apps.googleusercontent.com';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -9,7 +12,56 @@ export default function Register() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const { loginUser } = useAuth();
   const navigate = useNavigate();
+  const googleBtnRef = useRef(null);
+
+  useEffect(() => {
+    const initGoogle = () => {
+      if (window.google && window.google.accounts) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+        window.google.accounts.id.renderButton(
+          googleBtnRef.current,
+          {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signup_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+          }
+        );
+      }
+    };
+
+    if (window.google && window.google.accounts) {
+      initGoogle();
+    } else {
+      const interval = setInterval(() => {
+        if (window.google && window.google.accounts) {
+          clearInterval(interval);
+          initGoogle();
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  const handleGoogleCallback = async (response) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await googleLogin(response.credential);
+      loginUser(res.data);
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Đăng ký bằng Google thất bại!');
+    }
+    setLoading(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +100,15 @@ export default function Register() {
             {loading ? 'Đang xử lý...' : 'Đăng ký'}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="auth-divider">
+          <span>hoặc</span>
+        </div>
+
+        {/* Google Sign-Up Button */}
+        <div className="google-btn-wrapper" ref={googleBtnRef}></div>
+
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
           Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
         </p>

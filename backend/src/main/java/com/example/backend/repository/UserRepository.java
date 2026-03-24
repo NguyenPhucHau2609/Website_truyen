@@ -20,6 +20,7 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     Optional<User> findByResetToken(String resetToken);
 
+    Optional<User> findByGoogleId(String googleId);
 
     List<User> findByFollowedStoryIdsContaining(String storyId);
 

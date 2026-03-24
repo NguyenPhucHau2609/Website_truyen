@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.stream.Collectors;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,6 +28,7 @@ import com.example.backend.model.ERole;
 import com.example.backend.model.Role;
 import com.example.backend.model.User;
 import com.example.backend.payload.request.ForgotPasswordRequest;
+import com.example.backend.payload.request.GoogleLoginRequest;
 import com.example.backend.payload.request.LoginRequest;
 import com.example.backend.payload.request.ResetPasswordRequest;
 import com.example.backend.payload.request.SignupRequest;
@@ -36,6 +39,11 @@ import com.example.backend.repository.UserRepository;
 import com.example.backend.security.jwt.JwtUtils;
 import com.example.backend.security.services.UserDetailsImpl;
 import com.example.backend.service.EmailService;
+
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -59,6 +67,9 @@ public class AuthController {
     @Autowired
     EmailService emailService;
 
+    @Value("${google.client.id}")
+    private String googleClientId;
+
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
@@ -73,11 +84,19 @@ public class AuthController {
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
 
+        // Fetch avatar from DB
+        String avatar = null;
+        User dbUser = userRepository.findById(userDetails.getId()).orElse(null);
+        if (dbUser != null) {
+            avatar = dbUser.getAvatar();
+        }
+
         return ResponseEntity.ok(new JwtResponse(jwt,
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
-                roles));
+                roles,
+                avatar));
     }
 
     @PostMapping("/signup")
@@ -125,6 +144,100 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<?> googleLogin(@Valid @RequestBody GoogleLoginRequest googleLoginRequest) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(googleLoginRequest.getCredential());
+
+            if (idToken == null) {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Error: Invalid Google token!"));
+            }
+
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            String googleId = payload.getSubject();
+            String email = payload.getEmail();
+            String pictureUrl = (String) payload.get("picture");
+
+            // Find user by Google ID or email
+            User user = userRepository.findByGoogleId(googleId).orElse(null);
+
+            if (user == null) {
+                // Check if user exists with same email
+                user = userRepository.findByEmail(email).orElse(null);
+
+                if (user != null) {
+                    // Link Google account to existing user
+                    user.setGoogleId(googleId);
+                    user.setProvider("google");
+                    if (pictureUrl != null) {
+                        user.setAvatar(pictureUrl);
+                    }
+                    userRepository.save(user);
+                } else {
+                    // Create new user
+                    String username = email.split("@")[0];
+                    // Ensure unique username
+                    String baseUsername = username;
+                    int counter = 1;
+                    while (userRepository.existsByUsername(username)) {
+                        username = baseUsername + counter;
+                        counter++;
+                    }
+
+                    user = new User();
+                    user.setUsername(username);
+                    user.setEmail(email);
+                    user.setPassword(encoder.encode(UUID.randomUUID().toString()));
+                    user.setGoogleId(googleId);
+                    user.setProvider("google");
+                    user.setAvatar(pictureUrl);
+
+                    Set<Role> roles = new HashSet<>();
+                    Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    roles.add(userRole);
+                    user.setRoles(roles);
+
+                    userRepository.save(user);
+                }
+            } else {
+                // Existing Google user — sync avatar from Google
+                if (pictureUrl != null) {
+                    user.setAvatar(pictureUrl);
+                    userRepository.save(user);
+                }
+            }
+
+            // Generate JWT for this user
+            UserDetailsImpl userDetails = UserDetailsImpl.build(user);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtUtils.generateJwtToken(authentication);
+
+            List<String> roles = userDetails.getAuthorities().stream()
+                    .map(item -> item.getAuthority())
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(new JwtResponse(jwt,
+                    userDetails.getId(),
+                    userDetails.getUsername(),
+                    userDetails.getEmail(),
+                    roles,
+                    user.getAvatar()));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new MessageResponse("Error: Google authentication failed! " + e.getMessage()));
+        }
     }
 
     @PostMapping("/forgot-password")

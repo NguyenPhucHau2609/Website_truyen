@@ -28,9 +28,11 @@ public class User {
     @Email
     private String email;
 
-    @NotBlank
     @Size(max = 120)
     private String password;
+
+    private String googleId;
+    private String provider; // "local" or "google"
 
     @DBRef
     private Set<Role> roles = new HashSet<>();
@@ -51,6 +53,7 @@ public class User {
         this.username = username;
         this.email = email;
         this.password = password;
+        this.provider = "local";
     }
 
     public String getId() { return id; }
@@ -82,4 +85,10 @@ public class User {
 
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
+
+    public String getGoogleId() { return googleId; }
+    public void setGoogleId(String googleId) { this.googleId = googleId; }
+
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
 }
