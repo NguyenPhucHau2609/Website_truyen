@@ -43,9 +43,14 @@ export default function Login() {
             {loading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            <Link to="/forgot-password">Quên mật khẩu?</Link>
+          </p>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
