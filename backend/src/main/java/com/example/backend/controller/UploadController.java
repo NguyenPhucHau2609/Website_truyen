@@ -39,7 +39,7 @@ public class UploadController {
     }
 
     @PostMapping("/images")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<?> uploadMultipleImages(@RequestParam("files") MultipartFile[] files) {
         List<String> urls = new ArrayList<>();
         try {

@@ -186,6 +186,11 @@ export default function Profile() {
               </span>
             ))}
           </div>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.9rem', flexWrap: 'wrap' }}>
+            <Link to="/studio" className="btn btn-primary btn-sm">
+              Đăng truyện và thêm chương
+            </Link>
+          </div>
         </div>
       </div>
 

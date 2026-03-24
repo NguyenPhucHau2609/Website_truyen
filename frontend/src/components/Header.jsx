@@ -70,6 +70,10 @@ export default function Header() {
             onClick={() => setMobileOpen(false)}>Trang chủ</Link>
           <Link to="/stories" className={`nav-link ${location.pathname === '/stories' ? 'active' : ''}`}
             onClick={() => setMobileOpen(false)}>Danh sách truyện</Link>
+          {user && (
+            <Link to="/studio" className={`nav-link ${location.pathname === '/studio' ? 'active' : ''}`}
+              onClick={() => setMobileOpen(false)}>Đăng truyện</Link>
+          )}
           {isAdmin() && (
             <Link to="/admin" className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}
               onClick={() => setMobileOpen(false)}>Quản trị</Link>
@@ -78,12 +82,12 @@ export default function Header() {
 
         <div className="nav-actions">
           <div ref={themeRef} className="theme-switcher">
-            <button className="btn-icon" title="Doi mau giao dien" onClick={() => setShowTheme(!showTheme)}>
+            <button className="btn-icon" title="Đổi màu giao diện" onClick={() => setShowTheme(!showTheme)}>
               🎨
             </button>
             {showTheme && (
               <div className="theme-dropdown">
-                <div className="theme-title">Chon giao dien</div>
+                <div className="theme-title">Chọn giao diện</div>
                 {Object.entries(themes).map(([key, preset]) => (
                   <button
                     key={key}
@@ -149,6 +153,7 @@ export default function Header() {
                 </button>
                 {showMenu && (
                   <div className="user-dropdown">
+                    <Link to="/studio" onClick={() => setShowMenu(false)}>Đăng truyện</Link>
                     <Link to="/profile" onClick={() => setShowMenu(false)}>👤 Hồ sơ</Link>
                     <Link to="/profile?tab=bookmarks" onClick={() => setShowMenu(false)}>📑 Bookmark</Link>
                     <Link to="/profile?tab=history" onClick={() => setShowMenu(false)}>📚 Lịch sử đọc</Link>
