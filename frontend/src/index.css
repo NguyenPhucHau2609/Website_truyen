@@ -115,12 +115,15 @@ a:hover {
   right: 0;
   top: calc(100% + 10px);
   width: 260px;
+  max-height: min(70vh, 520px);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   z-index: 220;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .theme-title {
   padding: 0.7rem 1rem;
@@ -129,6 +132,10 @@ a:hover {
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
 }
 .theme-option {
   width: 100%;
@@ -165,6 +172,7 @@ a:hover {
 }
 .theme-info {
   flex: 1;
+  min-width: 0;
 }
 .theme-info strong {
   display: block;
@@ -1683,6 +1691,18 @@ tr:hover td {
   .modal {
     padding: 1.5rem;
   }
+  .theme-dropdown {
+    position: fixed;
+    top: calc(var(--header-height) + 0.75rem);
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    max-height: calc(100vh - var(--header-height) - 1.5rem);
+    border-radius: 16px;
+  }
+  .theme-option {
+    padding: 0.8rem 0.9rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1702,6 +1722,26 @@ tr:hover td {
   .reader-settings {
     flex-direction: column;
     gap: 0.5rem;
+  }
+  .theme-dropdown {
+    top: calc(var(--header-height) + 0.5rem);
+    left: 0.5rem;
+    right: 0.5rem;
+    max-height: calc(100vh - var(--header-height) - 1rem);
+  }
+  .theme-option {
+    gap: 0.65rem;
+  }
+  .theme-swatches span {
+    width: 16px;
+    height: 16px;
+  }
+  .theme-info strong {
+    font-size: 0.88rem;
+  }
+  .theme-info small {
+    display: block;
+    font-size: 0.75rem;
   }
 }
 

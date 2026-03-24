@@ -364,8 +364,8 @@ export default function Admin() {
                             <div className="approved-user-story-meta">
                               <span>{story.type === 'MANGA' ? 'Manga' : 'Novel'}</span>
                               <span>{story.status}</span>
-                              <span>ðŸ‘ {story.views || 0}</span>
-                              <span>â­ {story.averageRating || 0}</span>
+                              <span>{'\u{1F441}'} {story.views || 0}</span>
+                              <span>{'\u2B50'} {story.averageRating || 0}</span>
                             </div>
                           </div>
                         </div>
