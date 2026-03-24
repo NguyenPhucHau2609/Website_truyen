@@ -19,6 +19,8 @@ public class Comment {
 
     private Integer chapterNumber;
 
+    private Integer pageIndex;
+
     @NotBlank
     private String userId;
 
@@ -36,12 +38,13 @@ public class Comment {
 
     public Comment() {}
 
-    public Comment(String storyId, String chapterId, Integer chapterNumber,
+    public Comment(String storyId, String chapterId, Integer chapterNumber, Integer pageIndex,
                    String userId, String username, String content,
                    String gifUrl, Long gifSize) {
         this.storyId = storyId;
         this.chapterId = chapterId;
         this.chapterNumber = chapterNumber;
+        this.pageIndex = pageIndex;
         this.userId = userId;
         this.username = username;
         this.content = content;
@@ -60,6 +63,9 @@ public class Comment {
 
     public Integer getChapterNumber() { return chapterNumber; }
     public void setChapterNumber(Integer chapterNumber) { this.chapterNumber = chapterNumber; }
+
+    public Integer getPageIndex() { return pageIndex; }
+    public void setPageIndex(Integer pageIndex) { this.pageIndex = pageIndex; }
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }

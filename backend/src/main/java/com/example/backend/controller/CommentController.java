@@ -75,6 +75,7 @@ public class CommentController {
             request.getStoryId(),
             request.getChapterId(),
             chapterNumber,
+            request.getPageIndex(),
             userDetails.getId(),
             userDetails.getUsername(),
             request.getContent(),
