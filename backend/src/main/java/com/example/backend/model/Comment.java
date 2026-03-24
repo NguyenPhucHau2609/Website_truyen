@@ -19,7 +19,7 @@ public class Comment {
 
     private Integer chapterNumber;
 
-    // For manga pages: 0-based index of the image within the chapter (optional)
+
     private Integer pageIndex;
 
     @NotBlank
@@ -39,12 +39,13 @@ public class Comment {
 
     public Comment() {}
 
-    public Comment(String storyId, String chapterId, Integer chapterNumber,
+    public Comment(String storyId, String chapterId, Integer chapterNumber, Integer pageIndex,
                    String userId, String username, String content,
                    String gifUrl, Long gifSize) {
         this.storyId = storyId;
         this.chapterId = chapterId;
         this.chapterNumber = chapterNumber;
+        this.pageIndex = pageIndex;
         this.userId = userId;
         this.username = username;
         this.content = content;
