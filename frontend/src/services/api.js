@@ -54,6 +54,7 @@ export const deleteChapter = (id) => api.delete(`/chapters/${id}`);
 // Comments
 export const getCommentsByStory = (storyId) => api.get(`/comments/story/${storyId}`);
 export const getCommentsByChapter = (chapterId) => api.get(`/comments/chapter/${chapterId}`);
+export const getCommentsByPage = (chapterId, pageIndex) => api.get(`/comments/chapter/${chapterId}/page/${pageIndex}`);
 export const createComment = (data) => api.post('/comments', data);
 export const deleteComment = (id) => api.delete(`/comments/${id}`);
 
