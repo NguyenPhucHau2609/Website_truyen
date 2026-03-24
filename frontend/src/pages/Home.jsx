@@ -20,13 +20,25 @@ export default function Home() {
   useEffect(() => {
     Promise.all([getStories(), getCategories()])
       .then(([sRes, cRes]) => {
-        setStories(sRes.data);
+        const allStories = sRes.data;
         setCategories(cRes.data);
+
+        // Trending: top 8 by views
+        const byViews = [...allStories].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
+        setTrending(byViews);
+
+        // New Releases: top 8 by updatedAt
+        const byDate = [...allStories].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 8);
+        setNewReleases(byDate);
+
+        // Recommendations: top 8 by averageRating
+        const byRating = [...allStories].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)).slice(0, 8);
+        setRecommendations(byRating);
+
         // Fetch 2 latest chapters per story
-        const storyList = sRes.data;
-        if (storyList.length > 0) {
+        if (allStories.length > 0) {
           Promise.all(
-            storyList.map(s =>
+            allStories.map(s =>
               getChaptersByStory(s.id)
                 .then(r => ({ storyId: s.id, chapters: r.data }))
                 .catch(() => ({ storyId: s.id, chapters: [] }))
@@ -83,8 +95,8 @@ export default function Home() {
       {/* Recommendations */}
       {recommendations.length > 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 className="section-title">🔥 Truyện hot nhất</h2>
-          <div className="story-grid">{trending.map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
+          <h2 className="section-title">⭐ Đề xuất hay nhất</h2>
+          <div className="story-grid">{recommendations.map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
         </div>
       )}
 
@@ -95,7 +107,7 @@ export default function Home() {
             <h2 className="section-title">🔥 Truyện hot nhất</h2>
             <Link to="/stories?sort=views" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
           </div>
-          <div className="story-grid">{manga.slice(0, 8).map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
+          <div className="story-grid">{trending.map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
         </div>
       )}
 
@@ -106,7 +118,7 @@ export default function Home() {
             <h2 className="section-title">🆕 Truyện mới cập nhật</h2>
             <Link to="/stories?sort=updatedAt" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
           </div>
-          <div className="story-grid">{novels.slice(0, 8).map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
+          <div className="story-grid">{newReleases.map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
         </div>
       )}
 
