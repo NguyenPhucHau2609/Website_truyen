@@ -62,56 +62,22 @@ public class StoryController {
         return ResponseEntity.ok(storyRepository.findAll());
     }
 
-    @GetMapping("/trending")
-    public ResponseEntity<List<Story>> getTrendingStories(@RequestParam(defaultValue = "10") int limit) {
-        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "views")).limit(limit);
-        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
-    }
+    @GetMapping("/followed")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<Story>> getFollowedStories() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
-    @GetMapping("/new-releases")
-    public ResponseEntity<List<Story>> getNewReleases(@RequestParam(defaultValue = "10") int limit) {
-        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "updatedAt")).limit(limit);
-        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
-    }
-
-    @GetMapping("/recommendations")
-    public ResponseEntity<List<Story>> getRecommendations(
-            @RequestParam(required = false) String userId,
-            @RequestParam(defaultValue = "10") int limit) {
-        
-        if (userId != null && !userId.isEmpty()) {
-            List<Bookmark> bookmarks = bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId);
-            if (!bookmarks.isEmpty()) {
-                Set<String> bookmarkedStoryIds = new HashSet<>();
-                Set<String> interestedCategoryIds = new HashSet<>();
-                
-                for (Bookmark b : bookmarks) {
-                    bookmarkedStoryIds.add(b.getStoryId());
-                    storyRepository.findById(b.getStoryId()).ifPresent(s -> {
-                        s.getCategories().forEach(c -> interestedCategoryIds.add(c.getId()));
-                    });
-                }
-
-                if (!interestedCategoryIds.isEmpty()) {
-                    Query query = new Query();
-                    query.addCriteria(Criteria.where("categories.$id").in(
-                        interestedCategoryIds.stream().map(org.bson.types.ObjectId::new).collect(java.util.stream.Collectors.toList())
-                    ));
-                    query.addCriteria(Criteria.where("_id").nin(
-                        bookmarkedStoryIds.stream().map(org.bson.types.ObjectId::new).collect(java.util.stream.Collectors.toList())
-                    ));
-                    query.with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "averageRating"));
-                    query.limit(limit);
-                    
-                    List<Story> recommended = mongoTemplate.find(query, Story.class);
-                    if (!recommended.isEmpty()) return ResponseEntity.ok(recommended);
-                }
+        Optional<User> userOpt = userRepository.findById(userDetails.getId());
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            List<String> followedIds = user.getFollowedStoryIds();
+            if (followedIds != null && !followedIds.isEmpty()) {
+                List<Story> stories = storyRepository.findAllById(followedIds);
+                return ResponseEntity.ok(stories);
             }
         }
-
-        // Fallback: Top rated stories
-        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "averageRating")).limit(limit);
-        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
+        return ResponseEntity.ok(List.of());
     }
 
     @GetMapping("/{id}")

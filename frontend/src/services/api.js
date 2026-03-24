@@ -29,6 +29,7 @@ export const getRecommendations = (userId, limit = 10) => api.get('/stories/reco
 export const createStory = (data) => api.post('/stories', data);
 export const updateStory = (id, data) => api.put(`/stories/${id}`, data);
 export const deleteStory = (id) => api.delete(`/stories/${id}`);
+export const getFollowedStories = () => api.get('/stories/followed');
 export const incrementViews = (id) => api.put(`/stories/${id}/views`);
 export const followStory = (id) => api.post(`/stories/${id}/follow`);
 export const isFollowing = (id) => api.get(`/stories/${id}/is-following`);
