@@ -12,7 +12,7 @@ import api from '../services/api';
 import Statistics from './Statistics';
 
 export default function Admin() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('dashboard');
   const [stats, setStats] = useState({});
@@ -53,9 +53,12 @@ export default function Admin() {
   const mangaInputRef = useRef(null);
 
   useEffect(() => {
+    // Đợi AuthContext load xong trước khi kiểm tra user
+    if (authLoading) return;
+    
     if (!user || !isAdmin()) { navigate('/'); return; }
     loadData();
-  }, [user]);
+  }, [user, authLoading]);
 
   const loadData = async () => {
     setLoading(true);

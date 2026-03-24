@@ -1,13 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getReadingHistory, getBookmarks, deleteBookmark, deleteReadingHistoryItem, getStory, getFollowedStories, getChaptersByStory } from '../services/api';
+import {
+  getReadingHistory,
+  getBookmarks,
+  deleteBookmark,
+  deleteReadingHistoryItem,
+  getStory,
+  getChapter,
+  getFollowedStories,
+  getChaptersByStory,
+} from '../services/api';
 
-// Helper: get read chapters from localStorage
+// Helper: lấy danh sách chương đã đọc từ localStorage
 function getReadChapters() {
   try {
     return JSON.parse(localStorage.getItem('readChapters') || '[]');
-  } catch { return []; }
+  } catch {
+    return [];
+  }
+}
+
+// Helper: kiểm tra ID MongoDB hợp lệ (24 ký tự hex)
+function isValidMongoId(id) {
+  return id && typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
 }
 
 function formatTimeAgo(dateStr) {
@@ -26,7 +42,7 @@ function formatTimeAgo(dateStr) {
 }
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') || 'history');
@@ -35,12 +51,19 @@ export default function Profile() {
   const [followedStories, setFollowedStories] = useState([]);
   const [chaptersMap, setChaptersMap] = useState({});
   const [storyCache, setStoryCache] = useState({});
+  const [chapterCache, setChapterCache] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { navigate('/login'); return; }
+    // Đợi AuthContext load xong trước khi kiểm tra user
+    if (authLoading) return;
+    
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     loadData();
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     const t = searchParams.get('tab');
@@ -54,54 +77,88 @@ export default function Profile() {
       setHistory(hRes.data);
       setBookmarks(bRes.data);
 
-      // Load story titles for history & bookmarks
-      const ids = new Set([
-        ...hRes.data.map(h => h.storyId),
-        ...bRes.data.map(b => b.storyId)
-      ]);
+      // Lọc chỉ các storyId hợp lệ
+      const storyIds = Array.from(
+        new Set([
+          ...hRes.data.map((h) => h.storyId).filter(isValidMongoId),
+          ...bRes.data.map((b) => b.storyId).filter(isValidMongoId),
+        ])
+      );
+
+      const storyResults = await Promise.all(
+        storyIds.map((sid) =>
+          getStory(sid)
+            .then((res) => ({ sid, data: res.data }))
+            .catch((err) => {
+              // Im lặng xử lý lỗi cho truyện không tồn tại
+              return { sid, data: { title: 'Truyện không tồn tại', id: sid } };
+            })
+        )
+      );
+
       const cache = {};
-      for (const sid of ids) {
-        try {
-          const s = await getStory(sid);
-          cache[sid] = s.data;
-        } catch (e) { cache[sid] = { title: 'Truyện đã xóa' }; }
-      }
+      storyResults.forEach(({ sid, data }) => {
+        cache[sid] = data;
+      });
       setStoryCache(cache);
 
-      // Load followed stories
-      try {
-        const fRes = await getFollowedStories();
-        setFollowedStories(fRes.data);
+      // Lọc chỉ các chapterId hợp lệ
+      const chapterIds = Array.from(
+        new Set([
+          ...hRes.data.map((h) => h.chapterId).filter(isValidMongoId),
+          ...bRes.data.map((b) => b.chapterId).filter(isValidMongoId),
+        ])
+      );
 
-        // Fetch 2 latest chapters per followed story
-        if (fRes.data.length > 0) {
-          const chResults = await Promise.all(
-            fRes.data.map(s =>
-              getChaptersByStory(s.id)
-                .then(r => ({ storyId: s.id, chapters: r.data }))
-                .catch(() => ({ storyId: s.id, chapters: [] }))
-            )
-          );
-          const map = {};
-          chResults.forEach(({ storyId, chapters }) => {
-            const sorted = [...chapters].sort((a, b) => b.chapterNumber - a.chapterNumber);
-            map[storyId] = sorted.slice(0, 2);
-          });
-          setChaptersMap(map);
-        }
-      } catch (e) { console.error(e); }
-    } catch (e) { console.error(e); }
+      if (chapterIds.length > 0) {
+        const chResults = await Promise.all(
+          chapterIds.map((cid) =>
+            getChapter(cid)
+              .then((res) => ({ cid, data: res.data }))
+              .catch(() => ({ cid, data: null }))
+          )
+        );
+        const chCache = {};
+        chResults.forEach(({ cid, data }) => {
+          chCache[cid] = data;
+        });
+        setChapterCache(chCache);
+      } else {
+        setChapterCache({});
+      }
+
+      const fRes = await getFollowedStories();
+      setFollowedStories(fRes.data);
+
+      if (fRes.data.length > 0) {
+        const chResults = await Promise.all(
+          fRes.data.map((s) =>
+            getChaptersByStory(s.id)
+              .then((r) => ({ storyId: s.id, chapters: r.data }))
+              .catch(() => ({ storyId: s.id, chapters: [] }))
+          )
+        );
+        const map = {};
+        chResults.forEach(({ storyId, chapters }) => {
+          const sorted = [...chapters].sort((a, b) => b.chapterNumber - a.chapterNumber);
+          map[storyId] = sorted.slice(0, 2);
+        });
+        setChaptersMap(map);
+      }
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   };
 
   const handleDeleteBookmark = async (id) => {
     await deleteBookmark(id);
-    setBookmarks(bookmarks.filter(b => b.id !== id));
+    setBookmarks(bookmarks.filter((b) => b.id !== id));
   };
 
   const handleDeleteHistory = async (id) => {
     await deleteReadingHistoryItem(id);
-    setHistory(history.filter(h => h.id !== id));
+    setHistory(history.filter((h) => h.id !== id));
   };
 
   if (!user) return null;
@@ -110,7 +167,12 @@ export default function Profile() {
     <div className="container">
       <div className="profile-header">
         {user.avatar ? (
-          <img src={user.avatar} alt={user.username} className="profile-avatar-img" referrerPolicy="no-referrer" />
+          <img
+            src={user.avatar}
+            alt={user.username}
+            className="profile-avatar-img"
+            referrerPolicy="no-referrer"
+          />
         ) : (
           <div className="profile-avatar">{user.username?.[0]?.toUpperCase()}</div>
         )}
@@ -118,87 +180,132 @@ export default function Profile() {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{user.username}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user.email}</p>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-            {user.roles?.map(r => (
-              <span key={r} className="category-tag">{r.replace('ROLE_', '')}</span>
+            {user.roles?.map((r) => (
+              <span key={r} className="category-tag">
+                {r.replace('ROLE_', '')}
+              </span>
             ))}
           </div>
         </div>
       </div>
 
       <div className="tabs">
-        <button className={`tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>
-          📚 Lịch sử đọc ({history.length})
+        <button
+          className={`tab ${tab === 'history' ? 'active' : ''}`}
+          onClick={() => setTab('history')}
+        >
+          Lịch sử đọc ({history.length})
         </button>
-        <button className={`tab ${tab === 'bookmarks' ? 'active' : ''}`} onClick={() => setTab('bookmarks')}>
-          📑 Bookmark ({bookmarks.length})
+        <button
+          className={`tab ${tab === 'bookmarks' ? 'active' : ''}`}
+          onClick={() => setTab('bookmarks')}
+        >
+          Bookmark ({bookmarks.length})
         </button>
-        <button className={`tab ${tab === 'following' ? 'active' : ''}`} onClick={() => setTab('following')}>
-          ❤️ Theo dõi ({followedStories.length})
+        <button
+          className={`tab ${tab === 'following' ? 'active' : ''}`}
+          onClick={() => setTab('following')}
+        >
+          Theo dõi ({followedStories.length})
         </button>
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Đang tải...</div>
+        <div className="loading">
+          <div className="spinner" />
+          Đang tải...
+        </div>
       ) : (
         <>
           {tab === 'history' && (
-            <div className="card">
+            <div>
               {history.length > 0 ? (
-                history.map(h => (
-                  <div key={h.id} className="chapter-item">
-                    <div>
-                      <Link to={`/story/${h.storyId}`} style={{ fontWeight: 600 }}>
-                        {storyCache[h.storyId]?.title || 'Đang tải...'}
-                      </Link>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        Đọc lần cuối: {new Date(h.lastReadAt).toLocaleString('vi-VN')}
-                      </div>
-                    </div>
-                    <button className="btn btn-sm btn-outline" onClick={() => handleDeleteHistory(h.id)}>✕</button>
-                  </div>
-                ))
+                <div className="story-grid">
+                  {history.map((h) => {
+                    const story = storyCache[h.storyId] || {};
+                    const chapter = h.chapterId ? chapterCache[h.chapterId] : null;
+                    const actionLink = h.chapterId
+                      ? `/story/${h.storyId}/chapter/${h.chapterId}`
+                      : `/story/${h.storyId}`;
+                    return (
+                      <LibraryStoryCard
+                        key={h.id}
+                        story={story}
+                        chapter={chapter}
+                        timestampLabel={`Đọc lần cuối ${formatTimeAgo(h.lastReadAt)}`}
+                        actionHref={actionLink}
+                        actionLabel={
+                          chapter ? `Tiếp tục Ch.${chapter?.chapterNumber || ''}` : 'Tiếp tục đọc'
+                        }
+                        onDelete={() => handleDeleteHistory(h.id)}
+                        deleteLabel="Xóa lịch sử"
+                      />
+                    );
+                  })}
+                </div>
               ) : (
-                <div className="empty-state"><p>Chưa có lịch sử đọc.</p></div>
+                <div className="card">
+                  <div className="empty-state">
+                    <p>Chưa có lịch sử đọc.</p>
+                  </div>
+                </div>
               )}
             </div>
           )}
 
           {tab === 'bookmarks' && (
-            <div className="card">
+            <div>
               {bookmarks.length > 0 ? (
-                bookmarks.map(b => (
-                  <div key={b.id} className="chapter-item">
-                    <div>
-                      <Link to={`/story/${b.storyId}`} style={{ fontWeight: 600 }}>
-                        {storyCache[b.storyId]?.title || 'Đang tải...'}
-                      </Link>
-                      {b.note && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{b.note}</div>}
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        {new Date(b.createdAt).toLocaleString('vi-VN')}
-                      </div>
-                    </div>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteBookmark(b.id)}>Xóa</button>
-                  </div>
-                ))
+                <div className="story-grid">
+                  {bookmarks.map((b) => {
+                    const story = storyCache[b.storyId] || {};
+                    const chapter = b.chapterId ? chapterCache[b.chapterId] : null;
+                    const actionLink = b.chapterId
+                      ? `/story/${b.storyId}/chapter/${b.chapterId}`
+                      : `/story/${b.storyId}`;
+                    return (
+                      <LibraryStoryCard
+                        key={b.id}
+                        story={story}
+                        chapter={chapter}
+                        note={b.note}
+                        timestampLabel={`Đánh dấu ${formatTimeAgo(b.createdAt)}`}
+                        actionHref={actionLink}
+                        actionLabel="Đọc ngay"
+                        onDelete={() => handleDeleteBookmark(b.id)}
+                        deleteLabel="Gỡ bookmark"
+                      />
+                    );
+                  })}
+                </div>
               ) : (
-                <div className="empty-state"><p>Chưa có bookmark nào.</p></div>
+                <div className="card">
+                  <div className="empty-state">
+                    <p>Chưa có bookmark nào.</p>
+                  </div>
+                </div>
               )}
             </div>
           )}
 
-          {tab === 'following' && (
-            followedStories.length > 0 ? (
+          {tab === 'following' &&
+            (followedStories.length > 0 ? (
               <div className="story-grid">
-                {followedStories.map(story => (
-                  <FollowedStoryCard key={story.id} story={story} chapters={chaptersMap[story.id] || []} />
+                {followedStories.map((story) => (
+                  <FollowedStoryCard
+                    key={story.id}
+                    story={story}
+                    chapters={chaptersMap[story.id] || []}
+                  />
                 ))}
               </div>
             ) : (
               <div className="card">
-                <div className="empty-state"><p>Chưa theo dõi truyện nào.</p></div>
+                <div className="empty-state">
+                  <p>Chưa theo dõi truyện nào.</p>
+                </div>
               </div>
-            )
-          )}
+            ))}
         </>
       )}
     </div>
@@ -207,33 +314,55 @@ export default function Profile() {
 
 function FollowedStoryCard({ story, chapters }) {
   const readChapters = getReadChapters();
+  const recentChapter = chapters?.[0];
+  const actionHref = recentChapter
+    ? `/story/${story.id}/chapter/${recentChapter.id}`
+    : `/story/${story.id}`;
 
   return (
-    <div className="story-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+    <div className="story-card">
       <Link to={`/story/${story.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className="story-cover">
           {story.coverImage ? (
-            <img src={story.coverImage} alt={story.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : '📖'}
+            <img
+              src={story.coverImage}
+              alt={story.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            '📚'
+          )}
         </div>
         <div className="story-info">
           <h3>{story.title}</h3>
           <div className="story-meta">
-            <span style={{
-              padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700,
-              background: story.type === 'MANGA' ? 'rgba(255,179,71,0.2)' : 'rgba(108,99,255,0.2)',
-              color: story.type === 'MANGA' ? 'var(--warning)' : 'var(--accent)'
-            }}>{story.type === 'MANGA' ? '🎨 Manga' : '📝 Novel'}</span>
-            <span>👁 {story.views || 0}</span>
-            <span>⭐ {story.averageRating || 0}</span>
+            <span
+              style={{
+                padding: '0.15rem 0.4rem',
+                borderRadius: '4px',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                background:
+                  story.type === 'MANGA' ? 'var(--badge-manga-bg)' : 'var(--badge-novel-bg)',
+                color: story.type === 'MANGA' ? 'var(--warning)' : 'var(--accent)',
+              }}
+            >
+              {story.type === 'MANGA' ? '🎨 Manga' : '📖 Novel'}
+            </span>
+            <span>Views {story.views || 0}</span>
+            <span>Rating {story.averageRating || 0}</span>
           </div>
+          {recentChapter && (
+            <div className="story-meta" style={{ marginTop: 6, fontSize: '0.82rem' }}>
+              <strong>Ch.{recentChapter.chapterNumber}</strong> · {recentChapter.title}
+            </div>
+          )}
         </div>
       </Link>
 
-      {/* 2 Latest Chapters */}
       {chapters.length > 0 && (
         <div className="story-card-chapters">
-          {chapters.map(ch => {
+          {chapters.map((ch) => {
             const isRead = readChapters.includes(ch.id);
             return (
               <Link
@@ -249,6 +378,90 @@ function FollowedStoryCard({ story, chapters }) {
           })}
         </div>
       )}
+
+      <div className="story-card-footer">
+        <div className="story-footer-left">
+          {recentChapter && (
+            <span className="muted">Cập nhật {formatTimeAgo(recentChapter.createdAt)}</span>
+          )}
+        </div>
+        <div className="story-actions">
+          <Link to={actionHref} className="btn btn-sm btn-primary">
+            {recentChapter ? `Đọc Ch.${recentChapter.chapterNumber}` : 'Xem truyện'}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LibraryStoryCard({
+  story,
+  chapter,
+  actionHref,
+  actionLabel,
+  timestampLabel,
+  note,
+  onDelete,
+  deleteLabel,
+}) {
+  const isManga = story?.type === 'MANGA';
+  return (
+    <div className="story-card">
+      <Link
+        to={story?.id ? `/story/${story.id}` : '#'}
+        style={{ textDecoration: 'none', color: 'inherit' }}
+      >
+        <div className="story-cover">
+          {story?.coverImage ? (
+            <img
+              src={story.coverImage}
+              alt={story?.title || 'Truyện'}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            'Không có ảnh'
+          )}
+        </div>
+        <div className="story-info">
+          <h3>{story?.title || 'Truyện không tồn tại'}</h3>
+          <div className="story-meta">
+            <span
+              style={{
+                padding: '0.15rem 0.4rem',
+                borderRadius: '4px',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                background: isManga ? 'var(--badge-manga-bg)' : 'var(--badge-novel-bg)',
+                color: isManga ? 'var(--warning)' : 'var(--accent)',
+              }}
+            >
+              {isManga ? '[Manga]' : '[Novel]'}
+            </span>
+            <span>Views {story?.views || 0}</span>
+            <span>Rating {story?.averageRating || 0}</span>
+          </div>
+          {chapter && (
+            <div className="story-meta" style={{ marginTop: 6, fontSize: '0.82rem' }}>
+              <strong>Ch.{chapter.chapterNumber}</strong> - {chapter.title}
+            </div>
+          )}
+          {note && <div className="story-note">{note}</div>}
+        </div>
+      </Link>
+      <div className="story-card-footer">
+        <div className="story-footer-left">
+          {timestampLabel && <span className="muted">{timestampLabel}</span>}
+        </div>
+        <div className="story-actions">
+          <Link to={actionHref} className="btn btn-sm btn-primary">
+            {actionLabel}
+          </Link>
+          <button className="btn btn-sm btn-outline" onClick={onDelete}>
+            {deleteLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

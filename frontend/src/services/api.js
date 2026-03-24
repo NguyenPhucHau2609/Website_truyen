@@ -16,18 +16,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+
+// Interceptor để xử lý lỗi im lặng cho các request được đánh dấu
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("user");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
+    // Nếu request được đánh dấu silent, không log lỗi
+    if (!error.config?.silent) {
+      console.error('API Error:', error.response?.data?.message || error.message);
+
     }
     return Promise.reject(error);
   }
 );
+
+// Auth
+export const login = (username, password) => api.post('/auth/signin', { username, password });
+export const register = (username, email, password) => api.post('/auth/signup', { username, email, password });
+
 
 // Auth
 export const login = (username, password) =>

@@ -82,6 +82,7 @@ public class CommentController {
             request.getGifUrl(),
             request.getGifSize()
         );
+        comment.setPageIndex(request.getPageIndex());
         commentRepository.save(comment);
         return ResponseEntity.ok(comment);
     }

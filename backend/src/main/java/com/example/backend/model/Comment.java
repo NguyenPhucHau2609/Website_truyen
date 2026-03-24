@@ -19,6 +19,7 @@ public class Comment {
 
     private Integer chapterNumber;
 
+
     private Integer pageIndex;
 
     @NotBlank

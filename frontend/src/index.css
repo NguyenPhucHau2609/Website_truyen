@@ -371,16 +371,26 @@ a:hover {
   opacity: 0.7;
 }
 .story-card-chapter:hover {
-  color: var(--text-primary);
-  transform: translateY(-1px);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+  }
+.story-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
-.ch-name {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.ch-time {
-  font-size: 0.7rem;
-}
+
+.story-footer-left { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; }
+.story-actions { display: flex; gap: 0.4rem; }
+.story-note { margin-top: 6px; font-size: 0.84rem; color: var(--text-secondary); }
+.muted { color: var(--text-secondary); font-size: 0.82rem; }
+.ch-name { font-weight: 700; color: var(--text-primary); }
+.ch-time { font-size: 0.7rem; }
+
 .status-badge {
   display: inline-block;
   padding: 0.2rem 0.6rem;
