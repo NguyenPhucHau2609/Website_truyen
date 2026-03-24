@@ -249,8 +249,8 @@ export default function Admin() {
       <div className="tabs">
         {['dashboard', 'statistics', 'moderation', 'approvedUsers', 'stories', 'categories', 'authors', 'chapters', 'reports'].map(t => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'moderation' && `Duyet (${pendingStories.length + pendingChapters.length})`}
-            {t === 'approvedUsers' && `Da duyet theo user (${approvedStoryGroups.length})`}
+            {t === 'moderation' && `Duyệt (${pendingStories.length + pendingChapters.length})`}
+            {t === 'approvedUsers' && `Đã duyệt theo user (${approvedStoryGroups.length})`}
             {t === 'dashboard' && '📊 Dashboard'}
             {t === 'statistics' && '📈 Thống kê'}
             {t === 'stories' && `📚 Truyện (${stories.length})`}
@@ -279,10 +279,10 @@ export default function Admin() {
       {tab === 'moderation' && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           <div className="card">
-            <h2 style={{ marginBottom: '1rem' }}>Truyen cho duyet</h2>
+            <h2 style={{ marginBottom: '1rem' }}>Truyện chờ duyệt</h2>
             {pendingStories.length > 0 ? (
               <div className="table-container"><table>
-                <thead><tr><th>Truyen</th><th>Nguoi gui</th><th>Loai</th><th>Ngay gui</th><th>Hanh dong</th></tr></thead>
+                <thead><tr><th>Truyện</th><th>Người gửi</th><th>Loại</th><th>Ngày gửi</th><th>Hành động</th></tr></thead>
                 <tbody>{pendingStories.map(s => (
                   <tr key={s.id}>
                     <td>{s.title}</td>
@@ -290,20 +290,20 @@ export default function Admin() {
                     <td>{s.type === 'MANGA' ? 'Manga' : 'Novel'}</td>
                     <td>{new Date(s.createdAt).toLocaleString('vi-VN')}</td>
                     <td><div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button className="btn btn-sm btn-primary" onClick={() => handleReviewStory(s.id, 'APPROVED')}>Duyet</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleReviewStory(s.id, 'REJECTED')}>Tu choi</button>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleReviewStory(s.id, 'APPROVED')}>Duyệt</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleReviewStory(s.id, 'REJECTED')}>Từ chối</button>
                     </div></td>
                   </tr>
                 ))}</tbody>
               </table></div>
-            ) : <div className="empty-state"><p>Khong co truyen nao dang cho.</p></div>}
+            ) : <div className="empty-state"><p>Không có truyện nào đang chờ.</p></div>}
           </div>
 
           <div className="card">
-            <h2 style={{ marginBottom: '1rem' }}>Chuong cho duyet</h2>
+            <h2 style={{ marginBottom: '1rem' }}>Chương chờ duyệt</h2>
             {pendingChapters.length > 0 ? (
               <div className="table-container"><table>
-                <thead><tr><th>Truyen</th><th>Chuong</th><th>Nguoi gui</th><th>Ngay gui</th><th>Hanh dong</th></tr></thead>
+                <thead><tr><th>Truyện</th><th>Chương</th><th>Người gửi</th><th>Ngày gửi</th><th>Hành động</th></tr></thead>
                 <tbody>{pendingChapters.map(ch => (
                   <tr key={ch.id}>
                     <td>{stories.find(s => s.id === ch.storyId)?.title || ch.storyId}</td>
@@ -311,13 +311,13 @@ export default function Admin() {
                     <td>{ch.uploaderUsername || ch.uploaderId || '-'}</td>
                     <td>{new Date(ch.createdAt).toLocaleString('vi-VN')}</td>
                     <td><div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button className="btn btn-sm btn-primary" onClick={() => handleReviewChapter(ch.id, 'APPROVED')}>Duyet</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleReviewChapter(ch.id, 'REJECTED')}>Tu choi</button>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleReviewChapter(ch.id, 'APPROVED')}>Duyệt</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleReviewChapter(ch.id, 'REJECTED')}>Từ chối</button>
                     </div></td>
                   </tr>
                 ))}</tbody>
               </table></div>
-            ) : <div className="empty-state"><p>Khong co chuong nao dang cho.</p></div>}
+            ) : <div className="empty-state"><p>Không có chương nào đang chờ.</p></div>}
           </div>
         </div>
       )}
@@ -327,13 +327,13 @@ export default function Admin() {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
-                <h2 style={{ marginBottom: '0.35rem' }}>Tat ca truyá»‡n da duyet theo nguoi dang</h2>
+                <h2 style={{ marginBottom: '0.35rem' }}>Tất cả truyện đã duyệt theo người đăng</h2>
                 <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-                  Admin co the xem tung tai khoan dang co bao nhieu truyá»‡n da duoc phe duyet.
+                  Admin có thể xem từng tài khoản đang có bao nhiêu truyện đã được phê duyệt.
                 </p>
               </div>
               <span className="category-tag">
-                {approvedStoryGroups.reduce((sum, group) => sum + group.stories.length, 0)} truyá»‡n da duyet
+                {approvedStoryGroups.reduce((sum, group) => sum + group.stories.length, 0)} truyện đã duyệt
               </span>
             </div>
           </div>
@@ -347,7 +347,7 @@ export default function Admin() {
                       <h3>{group.uploaderUsername}</h3>
                       <p>{group.uploaderId}</p>
                     </div>
-                    <span className="approved-user-count">{group.stories.length} truyá»‡n</span>
+                    <span className="approved-user-count">{group.stories.length} truyện</span>
                   </div>
 
                   <div className="approved-user-story-list">

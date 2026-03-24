@@ -18,15 +18,15 @@ import {
 } from "../services/api";
 
 const APPROVAL_LABELS = {
-  PENDING: "Cho duyet",
-  APPROVED: "Da duyet",
-  REJECTED: "Tu choi",
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Từ chối",
 };
 
 const STORY_STATUS_LABELS = {
-  ONGOING: "Dang ra",
-  COMPLETED: "Hoan thanh",
-  DROPPED: "Tam dung",
+  ONGOING: "Đang ra",
+  COMPLETED: "Hoàn thành",
+  DROPPED: "Tạm dừng",
 };
 
 const emptyStoryForm = {
@@ -179,7 +179,7 @@ export default function CreatorStudio() {
       }
       resetStoryForm();
       await loadData(selectedStoryId);
-      alert("Da luu truyen. Truyen dang cho admin duyet.");
+      alert("Đã lưu truyện. Truyện đang chờ admin duyệt.");
     } catch (error) {
       alert(error.response?.data?.message || error.message);
     }
@@ -199,7 +199,7 @@ export default function CreatorStudio() {
   };
 
   const handleDeleteStory = async (storyId) => {
-    if (!confirm("Xoa truyen nay?")) return;
+    if (!confirm("Xóa truyện này?")) return;
     await deleteStory(storyId);
     await loadData(selectedStoryId === storyId ? "" : selectedStoryId);
   };
@@ -208,7 +208,7 @@ export default function CreatorStudio() {
     try {
       const payload = { ...chapterForm };
       if (!payload.storyId) {
-        alert("Hay chon truyen.");
+        alert("Hãy chọn truyện.");
         return;
       }
       if (selectedStoryType === "MANGA") {
@@ -223,9 +223,9 @@ export default function CreatorStudio() {
         await createChapter(payload);
       }
 
-      await loadData(payload.storyId);
+      await loadData(selectedStoryId);
       resetChapterForm(payload.storyId);
-      alert("Da luu chuong. Chuong dang cho admin duyet.");
+      alert("Đã lưu chương. Chương đang chờ admin duyệt.");
     } catch (error) {
       alert(error.response?.data?.message || error.message);
     }
@@ -244,7 +244,7 @@ export default function CreatorStudio() {
   };
 
   const handleDeleteChapter = async (chapterId) => {
-    if (!confirm("Xoa chuong nay?")) return;
+    if (!confirm("Xóa chương này?")) return;
     await deleteChapter(chapterId);
     await loadData(selectedStoryId);
   };
@@ -253,7 +253,7 @@ export default function CreatorStudio() {
     return (
       <div className="loading">
         <div className="spinner" />
-        Dang tai...
+        Đang tải...
       </div>
     );
   }
@@ -262,21 +262,21 @@ export default function CreatorStudio() {
     <div className="container">
       <div style={{ marginBottom: "1.5rem" }}>
         <h1 className="page-title" style={{ marginBottom: "0.5rem" }}>
-          Phong dang truyen
+          Phòng đăng truyện
         </h1>
         <p style={{ color: "var(--text-secondary)" }}>
-          User co the gui manga hoac light novel, them chuong va theo doi lich su duyet.
+          User có thể gửi manga hoặc light novel, thêm chương và theo dõi lịch sử duyệt.
         </p>
       </div>
 
       <div className="stats-grid" style={{ marginBottom: "1.5rem" }}>
         <div className="stat-card">
           <div className="stat-value">{stories.length}</div>
-          <div className="stat-label">Truyen da gui</div>
+          <div className="stat-label">Truyện đã gửi</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{myChapters.length}</div>
-          <div className="stat-label">Chuong da gui</div>
+          <div className="stat-label">Chương đã gửi</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">
@@ -285,7 +285,7 @@ export default function CreatorStudio() {
                 .length
             }
           </div>
-          <div className="stat-label">Dang cho duyet</div>
+          <div className="stat-label">Đang chờ duyệt</div>
         </div>
       </div>
 
@@ -299,10 +299,10 @@ export default function CreatorStudio() {
       >
         <div className="card">
           <h2 style={{ marginBottom: "1rem" }}>
-            {editStoryId ? "Sua truyen va gui duyet lai" : "Gui truyen moi"}
+            {editStoryId ? "Sửa truyện và gửi duyệt lại" : "Gửi truyện mới"}
           </h2>
           <div className="form-group">
-            <label>Loai truyen</label>
+            <label>Loại truyện</label>
             <select
               className="form-control"
               value={storyForm.type}
@@ -313,7 +313,7 @@ export default function CreatorStudio() {
             </select>
           </div>
           <div className="form-group">
-            <label>Ten truyen</label>
+            <label>Tên truyện</label>
             <input
               className="form-control"
               value={storyForm.title}
@@ -321,7 +321,7 @@ export default function CreatorStudio() {
             />
           </div>
           <div className="form-group">
-            <label>Mo ta</label>
+            <label>Mô tả</label>
             <textarea
               className="form-control"
               value={storyForm.description}
@@ -329,7 +329,7 @@ export default function CreatorStudio() {
             />
           </div>
           <div className="form-group">
-            <label>Anh bia</label>
+            <label>Ảnh bìa</label>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <button
                 className="btn btn-outline btn-sm"
@@ -337,7 +337,7 @@ export default function CreatorStudio() {
                 onClick={() => coverInputRef.current?.click()}
                 disabled={coverUploading}
               >
-                {coverUploading ? "Dang upload..." : "Upload anh"}
+                {coverUploading ? "Đang upload..." : "Upload ảnh"}
               </button>
               <input
                 ref={coverInputRef}
@@ -350,25 +350,25 @@ export default function CreatorStudio() {
             <input
               className="form-control"
               style={{ marginTop: "0.75rem" }}
-              placeholder="Hoac dan URL anh bia"
+              placeholder="Hoặc dán URL ảnh bìa"
               value={storyForm.coverImage}
               onChange={(event) => setStoryForm({ ...storyForm, coverImage: event.target.value })}
             />
           </div>
           <div className="form-group">
-            <label>Tinh trang</label>
+            <label>Tình trạng</label>
             <select
               className="form-control"
               value={storyForm.status}
               onChange={(event) => setStoryForm({ ...storyForm, status: event.target.value })}
             >
-              <option value="ONGOING">Dang ra</option>
-              <option value="COMPLETED">Hoan thanh</option>
-              <option value="DROPPED">Tam dung</option>
+              <option value="ONGOING">Đang ra</option>
+              <option value="COMPLETED">Hoàn thành</option>
+              <option value="DROPPED">Tạm dừng</option>
             </select>
           </div>
           <div className="form-group">
-            <label>The loai</label>
+            <label>Thể loại</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
               {categories.map((category) => (
                 <label
@@ -401,7 +401,7 @@ export default function CreatorStudio() {
             </div>
           </div>
           <div className="form-group">
-            <label>Tac gia</label>
+            <label>Tác giả</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
               {authors.map((author) => (
                 <label
@@ -435,20 +435,20 @@ export default function CreatorStudio() {
           </div>
           <div className="modal-actions">
             <button className="btn btn-outline" onClick={resetStoryForm}>
-              Lam moi
+              Làm mới
             </button>
             <button className="btn btn-primary" onClick={handleSaveStory} disabled={coverUploading}>
-              {editStoryId ? "Cap nhat va gui duyet" : "Gui truyen"}
+              {editStoryId ? "Cập nhật và gửi duyệt" : "Gửi truyện"}
             </button>
           </div>
         </div>
 
         <div className="card">
           <h2 style={{ marginBottom: "1rem" }}>
-            {editChapterId ? "Sua chuong va gui duyet lai" : "Them chuong"}
+            {editChapterId ? "Sửa chương và gửi duyệt lại" : "Thêm chương"}
           </h2>
           <div className="form-group">
-            <label>Truyen</label>
+            <label>Truyện</label>
             <select
               className="form-control"
               value={chapterForm.storyId}
@@ -464,7 +464,7 @@ export default function CreatorStudio() {
                 }
               }}
             >
-              <option value="">Chon truyen...</option>
+              <option value="">Chọn truyện...</option>
               {stories.map((story) => (
                 <option key={story.id} value={story.id}>
                   {story.type === "MANGA" ? "Manga" : "Novel"} - {story.title}
@@ -473,7 +473,7 @@ export default function CreatorStudio() {
             </select>
           </div>
           <div className="form-group">
-            <label>So chuong</label>
+            <label>Số chương</label>
             <input
               className="form-control"
               type="number"
@@ -484,7 +484,7 @@ export default function CreatorStudio() {
             />
           </div>
           <div className="form-group">
-            <label>Tieu de</label>
+            <label>Tiêu đề</label>
             <input
               className="form-control"
               value={chapterForm.title}
@@ -494,10 +494,10 @@ export default function CreatorStudio() {
 
           {selectedStoryType === "MANGA" ? (
             <div className="form-group">
-              <label>Trang anh</label>
+              <label>Trang ảnh</label>
               <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
                 <button className="btn btn-outline btn-sm" type="button" onClick={() => mangaInputRef.current?.click()}>
-                  Chon anh
+                  Chọn ảnh
                 </button>
                 <button
                   className="btn btn-primary btn-sm"
@@ -505,7 +505,7 @@ export default function CreatorStudio() {
                   onClick={handleUploadMangaPages}
                   disabled={!mangaFiles.length || pagesUploading}
                 >
-                  {pagesUploading ? "Dang upload..." : "Upload trang"}
+                  {pagesUploading ? "Đang upload..." : "Upload trang"}
                 </button>
                 <input
                   ref={mangaInputRef}
@@ -544,7 +544,7 @@ export default function CreatorStudio() {
                           }))
                         }
                       >
-                        Xoa
+                        Xóa
                       </button>
                     </div>
                   ))}
@@ -553,7 +553,7 @@ export default function CreatorStudio() {
             </div>
           ) : (
             <div className="form-group">
-              <label>Noi dung</label>
+              <label>Nội dung</label>
               <textarea
                 className="form-control"
                 style={{ minHeight: "260px" }}
@@ -565,29 +565,29 @@ export default function CreatorStudio() {
 
           <div className="modal-actions">
             <button className="btn btn-outline" onClick={() => resetChapterForm()}>
-              Lam moi
+              Làm mới
             </button>
             <button className="btn btn-primary" onClick={handleSaveChapter} disabled={pagesUploading}>
-              {editChapterId ? "Cap nhat chuong" : "Gui chuong"}
+              {editChapterId ? "Cập nhật chương" : "Gửi chương"}
             </button>
           </div>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ marginBottom: "1rem" }}>Danh sach truyen cua toi</h2>
+        <h2 style={{ marginBottom: "1rem" }}>Danh sách truyện của tôi</h2>
         {stories.length ? (
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Truyen</th>
-                  <th>Loai</th>
-                  <th>Tinh trang</th>
-                  <th>Duyet</th>
-                  <th>Cap nhat</th>
-                  <th>Ghi chu admin</th>
-                  <th>Hanh dong</th>
+                  <th>Truyện</th>
+                  <th>Loại</th>
+                  <th>Tình trạng</th>
+                  <th>Duyệt</th>
+                  <th>Cập nhật</th>
+                  <th>Ghi chú admin</th>
+                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -610,7 +610,7 @@ export default function CreatorStudio() {
                     <td>
                       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                         <button className="btn btn-sm btn-outline" onClick={() => handleEditStory(story)}>
-                          Sua
+                          Sửa
                         </button>
                         <button
                           className="btn btn-sm btn-primary"
@@ -621,10 +621,10 @@ export default function CreatorStudio() {
                             setSelectedStoryChapters(chaptersByStory.data || []);
                           }}
                         >
-                          Chon truyen
+                          Chọn truyện
                         </button>
                         <button className="btn btn-sm btn-danger" onClick={() => handleDeleteStory(story.id)}>
-                          Xoa
+                          Xóa
                         </button>
                       </div>
                     </td>
@@ -635,7 +635,7 @@ export default function CreatorStudio() {
           </div>
         ) : (
           <div className="empty-state">
-            <p>Ban chua gui truyen nao.</p>
+            <p>Bạn chưa gửi truyện nào.</p>
           </div>
         )}
       </div>
@@ -651,7 +651,7 @@ export default function CreatorStudio() {
             marginBottom: "1rem",
           }}
         >
-          <h2 style={{ margin: 0 }}>Chuong theo truyen dang chon</h2>
+          <h2 style={{ margin: 0 }}>Chương theo truyện đang chọn</h2>
           <select
             className="form-control"
             style={{ maxWidth: "320px" }}
@@ -668,7 +668,7 @@ export default function CreatorStudio() {
               }
             }}
           >
-            <option value="">Chon truyen...</option>
+            <option value="">Chọn truyện...</option>
             {stories.map((story) => (
               <option key={story.id} value={story.id}>
                 {story.title}
@@ -698,16 +698,16 @@ export default function CreatorStudio() {
                     <span className={`status-badge status-${approvalOf(chapter)}`}>
                       {APPROVAL_LABELS[approvalOf(chapter)]}
                     </span>
-                    <span>Cap nhat: {formatDate(chapter.updatedAt)}</span>
+                    <span>Cập nhật: {formatDate(chapter.updatedAt)}</span>
                     {chapter.reviewNote && <span>Note: {chapter.reviewNote}</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button className="btn btn-sm btn-outline" onClick={() => handleEditChapter(chapter)}>
-                    Sua
+                    Sửa
                   </button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDeleteChapter(chapter.id)}>
-                    Xoa
+                    Xóa
                   </button>
                 </div>
               </li>
@@ -715,23 +715,23 @@ export default function CreatorStudio() {
           </ul>
         ) : (
           <div className="empty-state">
-            <p>{selectedStoryId ? "Truyen nay chua co chuong." : "Hay chon truyen de xem chuong."}</p>
+            <p>{selectedStoryId ? "Truyện này chưa có chương." : "Hãy chọn truyện để xem chương."}</p>
           </div>
         )}
       </div>
 
       <div className="card">
-        <h2 style={{ marginBottom: "1rem" }}>Lich su chuong da gui</h2>
+        <h2 style={{ marginBottom: "1rem" }}>Lịch sử chương đã gửi</h2>
         {myChapters.length ? (
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Truyen</th>
-                  <th>Chuong</th>
-                  <th>Duyet</th>
-                  <th>Cap nhat</th>
-                  <th>Ghi chu admin</th>
+                  <th>Truyện</th>
+                  <th>Chương</th>
+                  <th>Duyệt</th>
+                  <th>Cập nhật</th>
+                  <th>Ghi chú admin</th>
                 </tr>
               </thead>
               <tbody>

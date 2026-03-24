@@ -188,7 +188,7 @@ export default function Profile() {
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.9rem', flexWrap: 'wrap' }}>
             <Link to="/studio" className="btn btn-primary btn-sm">
-              Dang truyen va them chuong
+              Đăng truyện và thêm chương
             </Link>
           </div>
         </div>
