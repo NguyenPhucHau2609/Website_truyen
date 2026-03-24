@@ -50,6 +50,24 @@ public class StoryController {
         return ResponseEntity.ok(storyRepository.findAll());
     }
 
+    @GetMapping("/followed")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<Story>> getFollowedStories() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+
+        Optional<User> userOpt = userRepository.findById(userDetails.getId());
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            List<String> followedIds = user.getFollowedStoryIds();
+            if (followedIds != null && !followedIds.isEmpty()) {
+                List<Story> stories = storyRepository.findAllById(followedIds);
+                return ResponseEntity.ok(stories);
+            }
+        }
+        return ResponseEntity.ok(List.of());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getStoryById(@PathVariable String id) {
         Optional<Story> story = storyRepository.findById(id);

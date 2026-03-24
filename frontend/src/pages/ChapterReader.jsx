@@ -37,6 +37,14 @@ export default function ChapterReader() {
       setChapters(chsRes.data);
       setComments(cmRes.data);
       if (user) saveReadingHistory({ storyId, chapterId }).catch(() => {});
+      // Save to localStorage for read tracking on story cards
+      try {
+        const readChapters = JSON.parse(localStorage.getItem('readChapters') || '[]');
+        if (!readChapters.includes(chapterId)) {
+          readChapters.push(chapterId);
+          localStorage.setItem('readChapters', JSON.stringify(readChapters));
+        }
+      } catch {}
     } catch (e) { console.error(e); }
     setLoading(false);
   };

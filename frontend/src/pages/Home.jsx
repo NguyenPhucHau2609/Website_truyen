@@ -1,15 +1,45 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getStories, getCategories } from '../services/api';
+import { getStories, getCategories, getChaptersByStory } from '../services/api';
+
+// Helper: get read chapters from localStorage
+function getReadChapters() {
+  try {
+    return JSON.parse(localStorage.getItem('readChapters') || '[]');
+  } catch { return []; }
+}
 
 export default function Home() {
   const [stories, setStories] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [chaptersMap, setChaptersMap] = useState({}); // storyId -> [chapter, ...]
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getStories(), getCategories()])
-      .then(([sRes, cRes]) => { setStories(sRes.data); setCategories(cRes.data); })
+      .then(([sRes, cRes]) => {
+        setStories(sRes.data);
+        setCategories(cRes.data);
+        // Fetch 2 latest chapters per story
+        const storyList = sRes.data;
+        if (storyList.length > 0) {
+          Promise.all(
+            storyList.map(s =>
+              getChaptersByStory(s.id)
+                .then(r => ({ storyId: s.id, chapters: r.data }))
+                .catch(() => ({ storyId: s.id, chapters: [] }))
+            )
+          ).then(results => {
+            const map = {};
+            results.forEach(({ storyId, chapters }) => {
+              // Get 2 latest chapters (sorted desc by chapterNumber)
+              const sorted = [...chapters].sort((a, b) => b.chapterNumber - a.chapterNumber);
+              map[storyId] = sorted.slice(0, 2);
+            });
+            setChaptersMap(map);
+          });
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -56,7 +86,7 @@ export default function Home() {
       {trending.length > 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
           <h2 className="section-title">🔥 Truyện hot nhất</h2>
-          <div className="story-grid">{trending.map(s => <StoryCard key={s.id} story={s} />)}</div>
+          <div className="story-grid">{trending.map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
         </div>
       )}
 
@@ -67,7 +97,7 @@ export default function Home() {
             <h2 className="section-title">🎨 Truyện Tranh (Manga)</h2>
             <Link to="/stories?type=MANGA" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
           </div>
-          <div className="story-grid">{manga.slice(0, 8).map(s => <StoryCard key={s.id} story={s} />)}</div>
+          <div className="story-grid">{manga.slice(0, 8).map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
         </div>
       )}
 
@@ -78,7 +108,7 @@ export default function Home() {
             <h2 className="section-title">📝 Light Novel / Tiểu Thuyết</h2>
             <Link to="/stories?type=NOVEL" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
           </div>
-          <div className="story-grid">{novels.slice(0, 8).map(s => <StoryCard key={s.id} story={s} />)}</div>
+          <div className="story-grid">{novels.slice(0, 8).map(s => <StoryCard key={s.id} story={s} chapters={chaptersMap[s.id] || []} />)}</div>
         </div>
       )}
 
@@ -89,26 +119,65 @@ export default function Home() {
   );
 }
 
-function StoryCard({ story }) {
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now - date;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Vừa xong';
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} giờ trước`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return `${diffDay} ngày trước`;
+  return new Date(dateStr).toLocaleDateString('vi-VN');
+}
+
+function StoryCard({ story, chapters }) {
+  const readChapters = getReadChapters();
+
   return (
-    <Link to={`/story/${story.id}`} className="story-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-      <div className="story-cover">
-        {story.coverImage ? (
-          <img src={story.coverImage} alt={story.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : '📖'}
-      </div>
-      <div className="story-info">
-        <h3>{story.title}</h3>
-        <div className="story-meta">
-          <span style={{
-            padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700,
-            background: story.type === 'MANGA' ? 'rgba(255,179,71,0.2)' : 'rgba(108,99,255,0.2)',
-            color: story.type === 'MANGA' ? 'var(--warning)' : 'var(--accent)'
-          }}>{story.type === 'MANGA' ? '🎨 Manga' : '📝 Novel'}</span>
-          <span>👁 {story.views || 0}</span>
-          <span>⭐ {story.averageRating || 0}</span>
+    <div className="story-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Link to={`/story/${story.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+        <div className="story-cover">
+          {story.coverImage ? (
+            <img src={story.coverImage} alt={story.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : '📖'}
         </div>
-      </div>
-    </Link>
+        <div className="story-info">
+          <h3>{story.title}</h3>
+          <div className="story-meta">
+            <span style={{
+              padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700,
+              background: story.type === 'MANGA' ? 'rgba(255,179,71,0.2)' : 'rgba(108,99,255,0.2)',
+              color: story.type === 'MANGA' ? 'var(--warning)' : 'var(--accent)'
+            }}>{story.type === 'MANGA' ? '🎨 Manga' : '📝 Novel'}</span>
+            <span>👁 {story.views || 0}</span>
+            <span>⭐ {story.averageRating || 0}</span>
+          </div>
+        </div>
+      </Link>
+
+      {/* 2 Latest Chapters - below title */}
+      {chapters.length > 0 && (
+        <div className="story-card-chapters">
+          {chapters.map(ch => {
+            const isRead = readChapters.includes(ch.id);
+            return (
+              <Link
+                key={ch.id}
+                to={`/story/${story.id}/chapter/${ch.id}`}
+                className={`story-card-chapter ${isRead ? 'read' : 'unread'}`}
+                title={`Ch.${ch.chapterNumber}: ${ch.title}`}
+              >
+                <span className="ch-name">Ch.{ch.chapterNumber}</span>
+                <span className="ch-time">{formatTimeAgo(ch.createdAt)}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

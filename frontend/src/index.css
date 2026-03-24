@@ -242,6 +242,57 @@ a:hover { color: var(--accent-hover); }
   align-items: center;
   gap: 0.25rem;
 }
+
+/* ===== STORY CARD CHAPTERS ===== */
+.story-card-chapters {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+}
+.story-card-chapter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.story-card-chapter:last-child {
+  border-bottom: none;
+}
+.story-card-chapter:hover {
+  background: rgba(108,99,255,0.12);
+}
+/* Unread: bright and prominent */
+.story-card-chapter.unread {
+  color: var(--text-primary);
+}
+.story-card-chapter.unread .ch-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+.story-card-chapter.unread .ch-time {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+/* Read: dimmed/faded */
+.story-card-chapter.read {
+  opacity: 0.45;
+}
+.story-card-chapter.read .ch-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.story-card-chapter.read .ch-time {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+.story-card-chapter.read:hover {
+  opacity: 0.7;
+}
 .status-badge {
   display: inline-block;
   padding: 0.2rem 0.6rem;
