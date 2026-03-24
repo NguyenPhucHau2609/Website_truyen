@@ -6,7 +6,7 @@ import {
   createComment,
   getChapter,
   getChaptersByStory,
-  getCommentsByChapter,
+  getCommentsByStory,
   getStory,
   saveReadingHistory,
 } from '../services/api';
@@ -21,6 +21,7 @@ export default function ChapterReader() {
   const [chapter, setChapter] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [comments, setComments] = useState([]);
+  const [page, setPage] = useState(1);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -53,12 +54,13 @@ export default function ChapterReader() {
         getChapter(chapterId),
         getStory(storyId),
         getChaptersByStory(storyId),
-        getCommentsByChapter(chapterId),
+        getCommentsByStory(storyId),
       ]);
       setChapter(chRes.data);
       setStory(sRes.data);
       setChapters(chsRes.data);
       setComments(cmRes.data);
+      setPage(1);
       if (user) saveReadingHistory({ storyId, chapterId }).catch(() => {});
       try {
         const readChapters = JSON.parse(localStorage.getItem('readChapters') || '[]');
@@ -81,10 +83,11 @@ export default function ChapterReader() {
   const handleComment = async () => {
     if (!user) return alert('Vui long dang nhap!');
     if (!newComment.trim()) return;
-    await createComment({ storyId, chapterId, content: newComment });
+    await createComment({ storyId, chapterId, chapterNumber: chapter?.chapterNumber, content: newComment });
     setNewComment('');
-    const cmRes = await getCommentsByChapter(chapterId);
+    const cmRes = await getCommentsByStory(storyId);
     setComments(cmRes.data);
+    setPage(1);
   };
 
   if (loading) return <div className="loading"><div className="spinner" />Dang tai...</div>;
@@ -255,7 +258,7 @@ export default function ChapterReader() {
       {/* Comments */}
       <div style={{ maxWidth: '750px', margin: '0 auto', padding: '1rem' }}>
         <div className="card">
-          <h3>💬 Binh luan chuong ({comments.length})</h3>
+          <h3>💬 Binh luan truyen ({comments.length})</h3>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', marginTop: '0.75rem' }}>
             <input
               className="form-control"
@@ -267,16 +270,69 @@ export default function ChapterReader() {
             />
             <button className="btn btn-primary" onClick={handleComment}>Gui</button>
           </div>
-          {comments.map((c) => (
-            <div key={c.id} style={{ padding: '0.6rem', borderBottom: '1px solid var(--border)', marginBottom: '0.4rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                <strong style={{ color: 'var(--accent)', fontSize: '0.85rem' }}>{c.username || 'An danh'}</strong>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{new Date(c.createdAt).toLocaleString('vi-VN')}</span>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.9rem' }}>{c.content}</p>
-            </div>
-          ))}
-          {comments.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>Chua co binh luan cho chuong nay.</p>}
+          {(() => {
+            const pageSize = 10;
+            const totalPages = Math.max(1, Math.ceil(comments.length / pageSize));
+            const safePage = Math.min(page, totalPages);
+            const start = (safePage - 1) * pageSize;
+            const current = comments.slice(start, start + pageSize);
+            return (
+              <>
+                {current.map((c) => (
+                  <div key={c.id} style={{ padding: '0.8rem', borderBottom: '1px solid var(--border)', marginBottom: '0.4rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <strong style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>{c.username || 'An danh'}</strong>
+                      {c.chapterNumber && (
+                        <span style={{
+                          background: 'var(--bg-card)',
+                          color: 'var(--accent)',
+                          borderRadius: '999px',
+                          padding: '0.1rem 0.55rem',
+                          fontSize: '0.72rem',
+                          border: '1px solid var(--border)'
+                        }}>
+                          Chuong {c.chapterNumber}
+                        </span>
+                      )}
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{new Date(c.createdAt).toLocaleString('vi-VN')}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{c.content}</p>
+                  </div>
+                ))}
+                {comments.length > pageSize && (
+                  <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-outline"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                      disabled={safePage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      ←
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        className={`btn ${p === safePage ? 'btn-primary' : 'btn-outline'}`}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      className="btn btn-outline"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                      disabled={safePage === totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+          {comments.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>Chua co binh luan nao cho truyen nay.</p>}
         </div>
       </div>
     </div>

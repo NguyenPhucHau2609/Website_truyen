@@ -17,6 +17,8 @@ public class Comment {
 
     private String chapterId;
 
+    private Integer chapterNumber;
+
     @NotBlank
     private String userId;
 
@@ -29,9 +31,10 @@ public class Comment {
 
     public Comment() {}
 
-    public Comment(String storyId, String chapterId, String userId, String username, String content) {
+    public Comment(String storyId, String chapterId, Integer chapterNumber, String userId, String username, String content) {
         this.storyId = storyId;
         this.chapterId = chapterId;
+        this.chapterNumber = chapterNumber;
         this.userId = userId;
         this.username = username;
         this.content = content;
@@ -45,6 +48,9 @@ public class Comment {
 
     public String getChapterId() { return chapterId; }
     public void setChapterId(String chapterId) { this.chapterId = chapterId; }
+
+    public Integer getChapterNumber() { return chapterNumber; }
+    public void setChapterNumber(Integer chapterNumber) { this.chapterNumber = chapterNumber; }
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
