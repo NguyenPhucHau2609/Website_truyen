@@ -1,22 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getStories, getCategories } from '../services/api';
+import { getCategories, getTrendingStories, getNewReleases, getRecommendations } from '../services/api';
 
 export default function Home() {
-  const [stories, setStories] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [newReleases, setNewReleases] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getStories(), getCategories()])
-      .then(([sRes, cRes]) => { setStories(sRes.data); setCategories(cRes.data); })
+    const user = JSON.parse(localStorage.getItem('user'));
+    const userId = user?.id;
+
+    Promise.all([
+      getTrendingStories(8),
+      getNewReleases(8),
+      getRecommendations(userId, 8),
+      getCategories()
+    ])
+      .then(([tRes, nRes, rRes, cRes]) => {
+        setTrending(tRes.data);
+        setNewReleases(nRes.data);
+        setRecommendations(rRes.data);
+        setCategories(cRes.data);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
-
-  const manga = stories.filter(s => s.type === 'MANGA');
-  const novels = stories.filter(s => s.type === 'NOVEL');
-  const trending = [...stories].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
 
   if (loading) return <div className="loading"><div className="spinner" />Đang tải...</div>;
 
@@ -52,37 +63,37 @@ export default function Home() {
         </div>
       )}
 
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h2 className="section-title">✨ Gợi ý cho bạn</h2>
+          <div className="story-grid">{recommendations.map(s => <StoryCard key={s.id} story={s} />)}</div>
+        </div>
+      )}
+
       {/* Hot */}
       {trending.length > 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 className="section-title">🔥 Truyện hot nhất</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 className="section-title">🔥 Truyện hot nhất</h2>
+            <Link to="/stories?sort=views" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
+          </div>
           <div className="story-grid">{trending.map(s => <StoryCard key={s.id} story={s} />)}</div>
         </div>
       )}
 
-      {/* Manga */}
-      {manga.length > 0 && (
+      {/* New Releases */}
+      {newReleases.length > 0 && (
         <div style={{ marginBottom: '2.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="section-title">🎨 Truyện Tranh (Manga)</h2>
-            <Link to="/stories?type=MANGA" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
+            <h2 className="section-title">🆕 Truyện mới cập nhật</h2>
+            <Link to="/stories?sort=updatedAt" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
           </div>
-          <div className="story-grid">{manga.slice(0, 8).map(s => <StoryCard key={s.id} story={s} />)}</div>
+          <div className="story-grid">{newReleases.map(s => <StoryCard key={s.id} story={s} />)}</div>
         </div>
       )}
 
-      {/* Novel */}
-      {novels.length > 0 && (
-        <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="section-title">📝 Light Novel / Tiểu Thuyết</h2>
-            <Link to="/stories?type=NOVEL" style={{ fontSize: '0.85rem' }}>Xem tất cả →</Link>
-          </div>
-          <div className="story-grid">{novels.slice(0, 8).map(s => <StoryCard key={s.id} story={s} />)}</div>
-        </div>
-      )}
-
-      {stories.length === 0 && (
+      {trending.length === 0 && newReleases.length === 0 && (
         <div className="empty-state"><div className="icon">📚</div><p>Chưa có truyện nào.</p></div>
       )}
     </div>

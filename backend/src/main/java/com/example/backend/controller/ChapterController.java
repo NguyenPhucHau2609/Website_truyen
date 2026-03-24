@@ -59,17 +59,15 @@ public class ChapterController {
         chapterRepository.save(chapter);
 
         // Send notifications to followers
-        List<User> allUsers = userRepository.findAll();
-        for (User user : allUsers) {
-            if (user.getFollowedStoryIds() != null && user.getFollowedStoryIds().contains(request.getStoryId())) {
-                Notification notification = new Notification(
-                    user.getId(),
-                    "Chương mới: " + request.getTitle(),
-                    request.getStoryId(),
-                    chapter.getId()
-                );
-                notificationRepository.save(notification);
-            }
+        List<User> followers = userRepository.findByFollowedStoryIdsContaining(request.getStoryId());
+        for (User user : followers) {
+            Notification notification = new Notification(
+                user.getId(),
+                "Chương mới: " + request.getTitle(),
+                request.getStoryId(),
+                chapter.getId()
+            );
+            notificationRepository.save(notification);
         }
 
         return ResponseEntity.ok(chapter);

@@ -17,16 +17,22 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.backend.model.Author;
+import com.example.backend.model.Bookmark;
 import com.example.backend.model.Category;
 import com.example.backend.model.Story;
 import com.example.backend.model.User;
 import com.example.backend.payload.request.StoryRequest;
 import com.example.backend.payload.response.MessageResponse;
 import com.example.backend.repository.AuthorRepository;
+import com.example.backend.repository.BookmarkRepository;
 import com.example.backend.repository.CategoryRepository;
 import com.example.backend.repository.StoryRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.security.services.UserDetailsImpl;
+
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -45,9 +51,67 @@ public class StoryController {
     @Autowired
     UserRepository userRepository;
 
+    @Autowired
+    BookmarkRepository bookmarkRepository;
+
+    @Autowired
+    MongoTemplate mongoTemplate;
+
     @GetMapping
     public ResponseEntity<List<Story>> getAllStories() {
         return ResponseEntity.ok(storyRepository.findAll());
+    }
+
+    @GetMapping("/trending")
+    public ResponseEntity<List<Story>> getTrendingStories(@RequestParam(defaultValue = "10") int limit) {
+        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "views")).limit(limit);
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
+    }
+
+    @GetMapping("/new-releases")
+    public ResponseEntity<List<Story>> getNewReleases(@RequestParam(defaultValue = "10") int limit) {
+        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "updatedAt")).limit(limit);
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<Story>> getRecommendations(
+            @RequestParam(required = false) String userId,
+            @RequestParam(defaultValue = "10") int limit) {
+        
+        if (userId != null && !userId.isEmpty()) {
+            List<Bookmark> bookmarks = bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            if (!bookmarks.isEmpty()) {
+                Set<String> bookmarkedStoryIds = new HashSet<>();
+                Set<String> interestedCategoryIds = new HashSet<>();
+                
+                for (Bookmark b : bookmarks) {
+                    bookmarkedStoryIds.add(b.getStoryId());
+                    storyRepository.findById(b.getStoryId()).ifPresent(s -> {
+                        s.getCategories().forEach(c -> interestedCategoryIds.add(c.getId()));
+                    });
+                }
+
+                if (!interestedCategoryIds.isEmpty()) {
+                    Query query = new Query();
+                    query.addCriteria(Criteria.where("categories.$id").in(
+                        interestedCategoryIds.stream().map(org.bson.types.ObjectId::new).collect(java.util.stream.Collectors.toList())
+                    ));
+                    query.addCriteria(Criteria.where("_id").nin(
+                        bookmarkedStoryIds.stream().map(org.bson.types.ObjectId::new).collect(java.util.stream.Collectors.toList())
+                    ));
+                    query.with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "averageRating"));
+                    query.limit(limit);
+                    
+                    List<Story> recommended = mongoTemplate.find(query, Story.class);
+                    if (!recommended.isEmpty()) return ResponseEntity.ok(recommended);
+                }
+            }
+        }
+
+        // Fallback: Top rated stories
+        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "averageRating")).limit(limit);
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
     }
 
     @GetMapping("/{id}")
@@ -65,38 +129,34 @@ public class StoryController {
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type) {
-        List<Story> allStories = storyRepository.findAll();
-        List<Story> filtered = new ArrayList<>();
+        
+        Query query = new Query();
+        List<Criteria> criteria = new ArrayList<>();
 
-        for (Story story : allStories) {
-            boolean match = true;
-
-            if (keyword != null && !keyword.isEmpty()) {
-                String lower = keyword.toLowerCase();
-                if (!story.getTitle().toLowerCase().contains(lower) &&
-                    (story.getDescription() == null || !story.getDescription().toLowerCase().contains(lower))) {
-                    match = false;
-                }
-            }
-
-            if (categoryId != null && !categoryId.isEmpty() && match) {
-                boolean hasCat = story.getCategories().stream()
-                        .anyMatch(c -> c.getId().equals(categoryId));
-                if (!hasCat) match = false;
-            }
-
-            if (status != null && !status.isEmpty() && match) {
-                if (!story.getStatus().name().equals(status)) match = false;
-            }
-
-            if (type != null && !type.isEmpty() && match) {
-                if (!story.getType().name().equals(type)) match = false;
-            }
-
-            if (match) filtered.add(story);
+        if (keyword != null && !keyword.isEmpty()) {
+            criteria.add(new Criteria().orOperator(
+                Criteria.where("title").regex(keyword, "i"),
+                Criteria.where("description").regex(keyword, "i")
+            ));
         }
 
-        return ResponseEntity.ok(filtered);
+        if (categoryId != null && !categoryId.isEmpty()) {
+            criteria.add(Criteria.where("categories.$id").is(new org.bson.types.ObjectId(categoryId)));
+        }
+
+        if (status != null && !status.isEmpty()) {
+            criteria.add(Criteria.where("status").is(status));
+        }
+
+        if (type != null && !type.isEmpty()) {
+            criteria.add(Criteria.where("type").is(type));
+        }
+
+        if (!criteria.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criteria.toArray(new Criteria[0])));
+        }
+
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
     }
 
     @PostMapping

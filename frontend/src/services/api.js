@@ -23,6 +23,9 @@ export const register = (username, email, password) => api.post('/auth/signup', 
 export const getStories = () => api.get('/stories');
 export const getStory = (id) => api.get(`/stories/${id}`);
 export const searchStories = (params) => api.get('/stories/search', { params });
+export const getTrendingStories = (limit = 10) => api.get('/stories/trending', { params: { limit } });
+export const getNewReleases = (limit = 10) => api.get('/stories/new-releases', { params: { limit } });
+export const getRecommendations = (userId, limit = 10) => api.get('/stories/recommendations', { params: { userId, limit } });
 export const createStory = (data) => api.post('/stories', data);
 export const updateStory = (id, data) => api.put(`/stories/${id}`, data);
 export const deleteStory = (id) => api.delete(`/stories/${id}`);
