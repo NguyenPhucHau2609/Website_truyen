@@ -12,9 +12,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.backend.model.Comment;
+import com.example.backend.model.Chapter;
 import com.example.backend.payload.request.CommentRequest;
 import com.example.backend.payload.response.MessageResponse;
 import com.example.backend.repository.CommentRepository;
+import com.example.backend.repository.ChapterRepository;
 import com.example.backend.security.services.UserDetailsImpl;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -25,9 +27,12 @@ public class CommentController {
     @Autowired
     CommentRepository commentRepository;
 
+    @Autowired
+    ChapterRepository chapterRepository;
+
     @GetMapping("/story/{storyId}")
     public ResponseEntity<List<Comment>> getCommentsByStory(@PathVariable String storyId) {
-        return ResponseEntity.ok(commentRepository.findByStoryIdAndChapterIdIsNullOrderByCreatedAtDesc(storyId));
+        return ResponseEntity.ok(commentRepository.findByStoryIdOrderByCreatedAtDesc(storyId));
     }
 
     @GetMapping("/chapter/{chapterId}")
@@ -46,13 +51,35 @@ public class CommentController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
+        Integer chapterNumber = null;
+        if (request.getChapterId() != null && !request.getChapterId().isBlank()) {
+            Chapter chapter = chapterRepository.findById(request.getChapterId()).orElse(null);
+            if (chapter != null) {
+                chapterNumber = chapter.getChapterNumber();
+            }
+        }
+        if (chapterNumber == null) {
+            chapterNumber = request.getChapterNumber();
+        }
+
+        if ((request.getContent() == null || request.getContent().trim().isEmpty())
+                && (request.getGifUrl() == null || request.getGifUrl().trim().isEmpty())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: Comment content or GIF is required!"));
+        }
+
+        if (request.getGifSize() != null && request.getGifSize() > 2 * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: GIF size must be <= 2MB!"));
+        }
+
         Comment comment = new Comment(
             request.getStoryId(),
             request.getChapterId(),
-            request.getPageIndex(),
+            chapterNumber,
             userDetails.getId(),
             userDetails.getUsername(),
-            request.getContent()
+            request.getContent(),
+            request.getGifUrl(),
+            request.getGifSize()
         );
         commentRepository.save(comment);
         return ResponseEntity.ok(comment);

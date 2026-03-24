@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080/api';
+export const API_HOST = API_URL.replace(/\/api$/, '');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -89,6 +90,10 @@ export const markAllAsRead = () => api.put('/notifications/read-all');
 export const createReport = (data) => api.post('/reports', data);
 export const getReports = () => api.get('/reports');
 export const updateReportStatus = (id, status) => api.put(`/reports/${id}/status`, { status });
+
+// GIFs (Giphy proxy)
+export const searchGifs = (q, limit = 12) => api.get('/gifs/search', { params: { q, limit } });
+export const trendingGifs = (limit = 12) => api.get('/gifs/trending', { params: { limit } });
 
 // Admin
 export const getAdminStats = () => api.get('/admin/stats');

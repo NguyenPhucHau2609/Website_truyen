@@ -84,6 +84,7 @@ public class WebSecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/authors/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/comments/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/ratings/story/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/gifs/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/stories/*/views").permitAll()
                         .anyRequest().authenticated()
                 );
