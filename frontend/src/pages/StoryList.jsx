@@ -11,16 +11,22 @@ export default function StoryList() {
   const [status, setStatus] = useState('');
   const [type, setType] = useState('');
   const [searchParams] = useSearchParams();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     getCategories().then(r => setCategories(r.data)).catch(() => {});
+    
+    // Initialize from URL params ONLY on mount
     const cat = searchParams.get('category');
     const t = searchParams.get('type');
     if (cat) setCategoryId(cat);
     if (t) setType(t);
-  }, [searchParams]);
+    setReady(true);
+  }, []); // Run once on mount
 
   useEffect(() => {
+    if (!ready) return; // Wait until URL params are parsed
+
     setLoading(true);
     const params = {};
     if (keyword) params.keyword = keyword;
@@ -33,7 +39,7 @@ export default function StoryList() {
       .then(r => setStories(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [keyword, categoryId, status, type]);
+  }, [keyword, categoryId, status, type, ready]);
 
   return (
     <div className="container">

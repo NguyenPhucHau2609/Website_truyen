@@ -15,7 +15,6 @@ export default function Login() {
   const googleBtnRef = useRef(null);
 
   useEffect(() => {
-    // Wait for Google GSI script to load
     const initGoogle = () => {
       if (window.google && window.google.accounts) {
         window.google.accounts.id.initialize({
@@ -36,11 +35,9 @@ export default function Login() {
       }
     };
 
-    // If script already loaded
     if (window.google && window.google.accounts) {
       initGoogle();
     } else {
-      // Wait for script to load
       const interval = setInterval(() => {
         if (window.google && window.google.accounts) {
           clearInterval(interval);
@@ -82,17 +79,36 @@ export default function Login() {
     <div className="auth-container">
       <div className="auth-card">
         <h2>🔐 Đăng nhập</h2>
+
         {error && <div className="alert alert-error">{error}</div>}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Tên đăng nhập</label>
-            <input className="form-control" value={username} onChange={e => setUsername(e.target.value)} required />
+            <input
+              className="form-control"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+            />
           </div>
+
           <div className="form-group">
             <label>Mật khẩu</label>
-            <input className="form-control" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+            <input
+              className="form-control"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
           </div>
-          <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%' }}
+            disabled={loading}
+          >
             {loading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>
@@ -102,12 +118,24 @@ export default function Login() {
           <span>hoặc</span>
         </div>
 
-        {/* Google Sign-In Button */}
+        {/* Google button */}
         <div className="google-btn-wrapper" ref={googleBtnRef}></div>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
-        </p>
+        {/* Bottom links */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: '1.5rem',
+            fontSize: '0.9rem',
+            color: 'var(--text-secondary)'
+          }}
+        >
+          <Link to="/forgot-password">Quên mật khẩu?</Link>
+          <span>
+            Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+          </span>
+        </div>
       </div>
     </div>
   );

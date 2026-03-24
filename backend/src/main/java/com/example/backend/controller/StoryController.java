@@ -62,6 +62,62 @@ public class StoryController {
         return ResponseEntity.ok(storyRepository.findAll());
     }
 
+    @GetMapping("/trending")
+    public ResponseEntity<List<Story>> getTrendingStories(@RequestParam(defaultValue = "10") int limit) {
+        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "views")).limit(limit);
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
+    }
+
+    @GetMapping("/new-releases")
+    public ResponseEntity<List<Story>> getNewReleases(@RequestParam(defaultValue = "10") int limit) {
+        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "updatedAt")).limit(limit);
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<Story>> getRecommendations(
+            @RequestParam(required = false) String userId,
+            @RequestParam(defaultValue = "10") int limit) {
+        
+        if (userId != null && !userId.isEmpty()) {
+            List<Bookmark> bookmarks = bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            if (!bookmarks.isEmpty()) {
+                Set<String> categoryIds = new HashSet<>();
+                Set<String> bookmarkedStoryIds = new HashSet<>();
+                
+                for (Bookmark b : bookmarks) {
+                    bookmarkedStoryIds.add(b.getStoryId());
+                    storyRepository.findById(b.getStoryId()).ifPresent(s -> {
+                        s.getCategories().forEach(c -> categoryIds.add(c.getId()));
+                    });
+                }
+                
+                if (!categoryIds.isEmpty()) {
+                    Query query = new Query();
+                    query.addCriteria(Criteria.where("categories.$id").in(
+                        categoryIds.stream().map(org.bson.types.ObjectId::new).toList()
+                    ));
+                    if (!bookmarkedStoryIds.isEmpty()) {
+                        query.addCriteria(Criteria.where("_id").nin(
+                            bookmarkedStoryIds.stream().map(org.bson.types.ObjectId::new).toList()
+                        ));
+                    }
+                    query.with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "averageRating"));
+                    query.limit(limit);
+                    
+                    List<Story> recommended = mongoTemplate.find(query, Story.class);
+                    if (!recommended.isEmpty()) {
+                        return ResponseEntity.ok(recommended);
+                    }
+                }
+            }
+        }
+        
+        // Fallback: top rated
+        Query query = new Query().with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "averageRating")).limit(limit);
+        return ResponseEntity.ok(mongoTemplate.find(query, Story.class));
+    }
+
     @GetMapping("/followed")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<List<Story>> getFollowedStories() {

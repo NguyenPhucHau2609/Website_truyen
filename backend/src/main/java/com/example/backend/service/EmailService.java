@@ -189,7 +189,7 @@ public class EmailService {
      * @return true nếu gửi thành công
      */
     public boolean sendResetPasswordEmail(String toEmail, String resetToken) {
-        String resetLink = "http://localhost:8080/reset-password?token=" + resetToken;
+        String resetLink = "http://localhost:5173/reset-password?token=" + resetToken;
 
         String htmlContent = "<html><body>" +
                 "<h2>Yêu cầu Đặt lại Mật khẩu</h2>" +

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCategories, getChaptersByStory, getStories } from '../services/api';
+import { getCategories, getChaptersByStory, getTrendingStories, getNewReleases, getRecommendations } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function getReadChapters() {
   try {
@@ -11,24 +12,42 @@ function getReadChapters() {
 }
 
 export default function Home() {
-  const [stories, setStories] = useState([]);
+  const { user } = useAuth();
+  const [trending, setTrending] = useState([]);
+  const [newReleases, setNewReleases] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [categories, setCategories] = useState([]);
   const [chaptersMap, setChaptersMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getStories(), getCategories()])
-      .then(([sRes, cRes]) => {
-        const allStories = sRes.data || [];
-        setStories(allStories);
+    const userId = user?.id;
+    
+    Promise.all([
+      getTrendingStories(8),
+      getNewReleases(8),
+      getRecommendations(userId, 8),
+      getCategories()
+    ])
+      .then(([tRes, nRes, rRes, cRes]) => {
+        const tStories = tRes.data || [];
+        const nStories = nRes.data || [];
+        const rStories = rRes.data || [];
+        
+        setTrending(tStories);
+        setNewReleases(nStories);
+        setRecommendations(rStories);
         setCategories(cRes.data || []);
+
+        const allVisibleStories = [...tStories, ...nStories, ...rStories];
+        const uniqueIds = [...new Set(allVisibleStories.map(s => s.id))];
 
         // Prefetch latest chapters for visible stories
         Promise.all(
-          allStories.map((s) =>
-            getChaptersByStory(s.id)
-              .then((r) => ({ storyId: s.id, chapters: r.data || [] }))
-              .catch(() => ({ storyId: s.id, chapters: [] }))
+          uniqueIds.map((id) =>
+            getChaptersByStory(id)
+              .then((r) => ({ storyId: id, chapters: r.data || [] }))
+              .catch(() => ({ storyId: id, chapters: [] }))
           )
         ).then((results) => {
           const map = {};
@@ -41,13 +60,9 @@ export default function Home() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   if (loading) return <div className="loading"><div className="spinner" />Dang tai...</div>;
-
-  const trending = [...stories].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
-  const newReleases = [...stories].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 8);
-  const recommendations = [...stories].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)).slice(0, 8);
 
   return (
     <div className="container">
