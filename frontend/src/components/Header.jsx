@@ -70,6 +70,10 @@ export default function Header() {
             onClick={() => setMobileOpen(false)}>Trang chủ</Link>
           <Link to="/stories" className={`nav-link ${location.pathname === '/stories' ? 'active' : ''}`}
             onClick={() => setMobileOpen(false)}>Danh sách truyện</Link>
+          {user && (
+            <Link to="/studio" className={`nav-link ${location.pathname === '/studio' ? 'active' : ''}`}
+              onClick={() => setMobileOpen(false)}>Dang truyen</Link>
+          )}
           {isAdmin() && (
             <Link to="/admin" className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}
               onClick={() => setMobileOpen(false)}>Quản trị</Link>
@@ -149,6 +153,7 @@ export default function Header() {
                 </button>
                 {showMenu && (
                   <div className="user-dropdown">
+                    <Link to="/studio" onClick={() => setShowMenu(false)}>Dang truyen</Link>
                     <Link to="/profile" onClick={() => setShowMenu(false)}>👤 Hồ sơ</Link>
                     <Link to="/profile?tab=bookmarks" onClick={() => setShowMenu(false)}>📑 Bookmark</Link>
                     <Link to="/profile?tab=history" onClick={() => setShowMenu(false)}>📚 Lịch sử đọc</Link>

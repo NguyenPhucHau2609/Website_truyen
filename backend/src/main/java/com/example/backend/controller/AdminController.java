@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.backend.model.EApprovalStatus;
 import com.example.backend.model.ERole;
 import com.example.backend.model.Role;
 import com.example.backend.model.User;
@@ -46,6 +47,8 @@ public class AdminController {
         stats.put("totalChapters", chapterRepository.count());
         stats.put("totalComments", commentRepository.count());
         stats.put("pendingReports", reportRepository.findByStatusOrderByCreatedAtDesc("PENDING").size());
+        stats.put("pendingStories", storyRepository.countByApprovalStatus(EApprovalStatus.PENDING));
+        stats.put("pendingChapters", chapterRepository.countByApprovalStatus(EApprovalStatus.PENDING));
         stats.put("recentStories", storyRepository.findAll().stream().limit(5).toList());
         return ResponseEntity.ok(stats);
     }

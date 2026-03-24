@@ -46,6 +46,11 @@ export const resetPassword = (token, newPassword) =>
 
 // Stories
 export const getStories = () => api.get("/stories");
+export const getManageStories = (approvalStatus) =>
+  api.get("/stories/manage", { params: approvalStatus ? { approvalStatus } : {} });
+export const getMyStories = () => api.get("/stories/mine");
+export const getStoriesForReview = (approvalStatus = "PENDING") =>
+  api.get("/stories/review", { params: { approvalStatus } });
 export const getStory = (id) => api.get(`/stories/${id}`);
 export const searchStories = (params) => api.get("/stories/search", { params });
 export const getTrendingStories = (limit = 10) =>
@@ -56,6 +61,8 @@ export const getRecommendations = (userId, limit = 10) =>
   api.get("/stories/recommendations", { params: { userId, limit } });
 export const createStory = (data) => api.post("/stories", data);
 export const updateStory = (id, data) => api.put(`/stories/${id}`, data);
+export const reviewStory = (id, approvalStatus, reviewNote = "") =>
+  api.put(`/stories/${id}/approval`, { approvalStatus, reviewNote });
 export const deleteStory = (id) => api.delete(`/stories/${id}`);
 export const getFollowedStories = () => api.get("/stories/followed");
 export const incrementViews = (id) => api.put(`/stories/${id}/views`);
@@ -75,9 +82,16 @@ export const getAuthors = () => api.get("/authors");
 // Chapters
 export const getChaptersByStory = (storyId) =>
   api.get(`/chapters/story/${storyId}`);
+export const getManageChaptersByStory = (storyId) =>
+  api.get(`/chapters/story/${storyId}/manage`);
+export const getMyChapters = () => api.get("/chapters/mine");
+export const getChaptersForReview = (params = { approvalStatus: "PENDING" }) =>
+  api.get("/chapters/review", { params });
 export const getChapter = (id) => api.get(`/chapters/${id}`);
 export const createChapter = (data) => api.post("/chapters", data);
 export const updateChapter = (id, data) => api.put(`/chapters/${id}`, data);
+export const reviewChapter = (id, approvalStatus, reviewNote = "") =>
+  api.put(`/chapters/${id}/approval`, { approvalStatus, reviewNote });
 export const deleteChapter = (id) => api.delete(`/chapters/${id}`);
 
 // Comments
@@ -128,7 +142,8 @@ export const trendingGifs = (limit = 12) =>
 // Admin
 export const getAdminStats = () => api.get("/admin/stats");
 export const getTrendStats = () => api.get("/admin/stats/trends");
-export const getHotStories = () => api.get("/admin/stats/hot");
+export const getHotStories = (limit = 10) =>
+  api.get("/stories/hot", { params: { limit } });
 export const getDistributionData = () => api.get("/admin/stats/distribution");
 
 // Upload (Cloudinary)

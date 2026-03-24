@@ -28,6 +28,16 @@ public class Chapter {
 
     private List<String> pages = new ArrayList<>();
 
+    private String uploaderId;
+    private String uploaderUsername;
+
+    private EApprovalStatus approvalStatus = EApprovalStatus.APPROVED;
+
+    private String reviewedById;
+    private String reviewedByUsername;
+    private String reviewNote;
+    private Date reviewedAt;
+
     private Date createdAt = new Date();
     private Date updatedAt = new Date();
 
@@ -54,6 +64,27 @@ public class Chapter {
 
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+
+    public String getUploaderId() { return uploaderId; }
+    public void setUploaderId(String uploaderId) { this.uploaderId = uploaderId; }
+
+    public String getUploaderUsername() { return uploaderUsername; }
+    public void setUploaderUsername(String uploaderUsername) { this.uploaderUsername = uploaderUsername; }
+
+    public EApprovalStatus getApprovalStatus() { return approvalStatus; }
+    public void setApprovalStatus(EApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; }
+
+    public String getReviewedById() { return reviewedById; }
+    public void setReviewedById(String reviewedById) { this.reviewedById = reviewedById; }
+
+    public String getReviewedByUsername() { return reviewedByUsername; }
+    public void setReviewedByUsername(String reviewedByUsername) { this.reviewedByUsername = reviewedByUsername; }
+
+    public String getReviewNote() { return reviewNote; }
+    public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
+
+    public Date getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(Date reviewedAt) { this.reviewedAt = reviewedAt; }
 
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }

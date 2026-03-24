@@ -2,14 +2,51 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  getAdminStats, getStories, getCategories, getAuthors, getReports, getChaptersByStory,
+  getAdminStats, getManageStories, getCategories, getAuthors, getReports, getManageChaptersByStory,
+  getStoriesForReview, getChaptersForReview,
   createStory, updateStory, deleteStory,
   createCategory, updateCategory, deleteCategory,
   createChapter, updateChapter, deleteChapter,
+  reviewStory, reviewChapter,
   updateReportStatus, uploadImage, uploadMangaPages
 } from '../services/api';
 import api from '../services/api';
 import Statistics from './Statistics';
+
+function getApprovedStoriesByUploader(stories) {
+  const groups = new Map();
+
+  stories
+    .filter((story) => (story.approvalStatus || 'APPROVED') === 'APPROVED' && story.uploaderId)
+    .forEach((story) => {
+      const groupKey = story.uploaderId;
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          uploaderId: story.uploaderId,
+          uploaderUsername: story.uploaderUsername || 'Nguoi dung',
+          stories: [],
+        });
+      }
+
+      groups.get(groupKey).stories.push(story);
+    });
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      stories: group.stories.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      }),
+    }))
+    .sort((a, b) => {
+      if (b.stories.length !== a.stories.length) {
+        return b.stories.length - a.stories.length;
+      }
+      return a.uploaderUsername.localeCompare(b.uploaderUsername);
+    });
+}
 
 export default function Admin() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -20,6 +57,8 @@ export default function Admin() {
   const [categories, setCategories] = useState([]);
   const [authors, setAuthors] = useState([]);
   const [reports, setReports] = useState([]);
+  const [pendingStories, setPendingStories] = useState([]);
+  const [pendingChapters, setPendingChapters] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Story
@@ -63,11 +102,13 @@ export default function Admin() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsRes, storiesRes, catsRes, authorsRes, reportsRes] = await Promise.all([
-        getAdminStats(), getStories(), getCategories(), getAuthors(), getReports()
+      const [statsRes, storiesRes, catsRes, authorsRes, reportsRes, pendingStoriesRes, pendingChaptersRes] = await Promise.all([
+        getAdminStats(), getManageStories(), getCategories(), getAuthors(), getReports(),
+        getStoriesForReview(), getChaptersForReview()
       ]);
       setStats(statsRes.data); setStories(storiesRes.data); setCategories(catsRes.data);
       setAuthors(authorsRes.data); setReports(reportsRes.data);
+      setPendingStories(pendingStoriesRes.data); setPendingChapters(pendingChaptersRes.data);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -154,7 +195,7 @@ export default function Admin() {
   // ===== CHAPTER =====
   const handleLoadChapters = async (storyId) => {
     setSelectedStoryId(storyId);
-    const res = await getChaptersByStory(storyId);
+    const res = await getManageChaptersByStory(storyId);
     setSelectedStoryChapters(res.data);
   };
   const getSelectedStoryType = () => stories.find(s => s.id === (chapterForm.storyId || selectedStoryId))?.type;
@@ -184,8 +225,21 @@ export default function Admin() {
     setChapterForm(prev => ({ ...prev, pages: prev.pages.filter((_, i) => i !== idx) }));
   };
 
+  // ===== MODERATION =====
+  const handleReviewStory = async (id, approvalStatus) => {
+    await reviewStory(id, approvalStatus);
+    loadData();
+  };
+
+  const handleReviewChapter = async (id, approvalStatus) => {
+    await reviewChapter(id, approvalStatus);
+    loadData();
+  };
+
   // ===== REPORTS =====
   const handleReportStatus = async (id, status) => { await updateReportStatus(id, status); loadData(); };
+
+  const approvedStoryGroups = getApprovedStoriesByUploader(stories);
 
   if (loading) return <div className="loading"><div className="spinner" />Đang tải...</div>;
 
@@ -193,8 +247,10 @@ export default function Admin() {
     <div className="container">
       <h1 className="page-title">⚙️ Quản trị hệ thống</h1>
       <div className="tabs">
-        {['dashboard', 'statistics', 'stories', 'categories', 'authors', 'chapters', 'reports'].map(t => (
+        {['dashboard', 'statistics', 'moderation', 'approvedUsers', 'stories', 'categories', 'authors', 'chapters', 'reports'].map(t => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+            {t === 'moderation' && `Duyet (${pendingStories.length + pendingChapters.length})`}
+            {t === 'approvedUsers' && `Da duyet theo user (${approvedStoryGroups.length})`}
             {t === 'dashboard' && '📊 Dashboard'}
             {t === 'statistics' && '📈 Thống kê'}
             {t === 'stories' && `📚 Truyện (${stories.length})`}
@@ -208,6 +264,8 @@ export default function Admin() {
 
       {tab === 'dashboard' && (
         <div className="stats-grid">
+          <div className="stat-card"><div className="stat-value">{stats.pendingStories || 0}</div><div className="stat-label">Truyen cho duyet</div></div>
+          <div className="stat-card"><div className="stat-value">{stats.pendingChapters || 0}</div><div className="stat-label">Chuong cho duyet</div></div>
           <div className="stat-card"><div className="stat-value">{stats.totalStories || 0}</div><div className="stat-label">Truyện</div></div>
           <div className="stat-card"><div className="stat-value">{stats.totalUsers || 0}</div><div className="stat-label">Người dùng</div></div>
           <div className="stat-card"><div className="stat-value">{stats.totalChapters || 0}</div><div className="stat-label">Chương</div></div>
@@ -217,6 +275,119 @@ export default function Admin() {
       )}
 
       {tab === 'statistics' && <Statistics embedded />}
+
+      {tab === 'moderation' && (
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          <div className="card">
+            <h2 style={{ marginBottom: '1rem' }}>Truyen cho duyet</h2>
+            {pendingStories.length > 0 ? (
+              <div className="table-container"><table>
+                <thead><tr><th>Truyen</th><th>Nguoi gui</th><th>Loai</th><th>Ngay gui</th><th>Hanh dong</th></tr></thead>
+                <tbody>{pendingStories.map(s => (
+                  <tr key={s.id}>
+                    <td>{s.title}</td>
+                    <td>{s.uploaderUsername || s.uploaderId || '-'}</td>
+                    <td>{s.type === 'MANGA' ? 'Manga' : 'Novel'}</td>
+                    <td>{new Date(s.createdAt).toLocaleString('vi-VN')}</td>
+                    <td><div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleReviewStory(s.id, 'APPROVED')}>Duyet</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleReviewStory(s.id, 'REJECTED')}>Tu choi</button>
+                    </div></td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            ) : <div className="empty-state"><p>Khong co truyen nao dang cho.</p></div>}
+          </div>
+
+          <div className="card">
+            <h2 style={{ marginBottom: '1rem' }}>Chuong cho duyet</h2>
+            {pendingChapters.length > 0 ? (
+              <div className="table-container"><table>
+                <thead><tr><th>Truyen</th><th>Chuong</th><th>Nguoi gui</th><th>Ngay gui</th><th>Hanh dong</th></tr></thead>
+                <tbody>{pendingChapters.map(ch => (
+                  <tr key={ch.id}>
+                    <td>{stories.find(s => s.id === ch.storyId)?.title || ch.storyId}</td>
+                    <td>Ch.{ch.chapterNumber}: {ch.title}</td>
+                    <td>{ch.uploaderUsername || ch.uploaderId || '-'}</td>
+                    <td>{new Date(ch.createdAt).toLocaleString('vi-VN')}</td>
+                    <td><div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleReviewChapter(ch.id, 'APPROVED')}>Duyet</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleReviewChapter(ch.id, 'REJECTED')}>Tu choi</button>
+                    </div></td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            ) : <div className="empty-state"><p>Khong co chuong nao dang cho.</p></div>}
+          </div>
+        </div>
+      )}
+
+      {tab === 'approvedUsers' && (
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ marginBottom: '0.35rem' }}>Tat ca truyá»‡n da duyet theo nguoi dang</h2>
+                <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                  Admin co the xem tung tai khoan dang co bao nhieu truyá»‡n da duoc phe duyet.
+                </p>
+              </div>
+              <span className="category-tag">
+                {approvedStoryGroups.reduce((sum, group) => sum + group.stories.length, 0)} truyá»‡n da duyet
+              </span>
+            </div>
+          </div>
+
+          {approvedStoryGroups.length > 0 ? (
+            <div className="approved-user-groups">
+              {approvedStoryGroups.map((group) => (
+                <div key={group.uploaderId} className="approved-user-card">
+                  <div className="approved-user-card-header">
+                    <div>
+                      <h3>{group.uploaderUsername}</h3>
+                      <p>{group.uploaderId}</p>
+                    </div>
+                    <span className="approved-user-count">{group.stories.length} truyá»‡n</span>
+                  </div>
+
+                  <div className="approved-user-story-list">
+                    {group.stories.map((story) => (
+                      <div key={story.id} className="approved-user-story-row">
+                        <div className="approved-user-story-main">
+                          {story.coverImage ? (
+                            <img src={story.coverImage} alt="" className="approved-user-story-cover" />
+                          ) : (
+                            <div className="approved-user-story-cover approved-user-story-cover-fallback">ðŸ“š</div>
+                          )}
+                          <div>
+                            <div className="approved-user-story-title">{story.title}</div>
+                            <div className="approved-user-story-meta">
+                              <span>{story.type === 'MANGA' ? 'Manga' : 'Novel'}</span>
+                              <span>{story.status}</span>
+                              <span>ðŸ‘ {story.views || 0}</span>
+                              <span>â­ {story.averageRating || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="approved-user-story-side">
+                          <span className="status-badge status-APPROVED">APPROVED</span>
+                          <small>{new Date(story.updatedAt || story.createdAt).toLocaleString('vi-VN')}</small>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card">
+              <div className="empty-state">
+                <p>ChÆ°a cÃ³ truyá»‡n nÃ o cá»§a nguoi dung duoc phe duyet.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === 'stories' && (
         <div>
@@ -235,7 +406,10 @@ export default function Admin() {
                   background: s.type === 'MANGA' ? 'var(--badge-manga-bg)' : 'var(--badge-novel-bg)',
                   color: s.type === 'MANGA' ? '#ffb347' : '#6c63ff'
                 }}>{s.type === 'MANGA' ? '🎨 Manga' : '📝 Novel'}</span></td>
-                <td><span className={`status-badge status-${s.status}`}>{s.status}</span></td>
+                <td><div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <span className={`status-badge status-${s.status}`}>{s.status}</span>
+                  <span className={`status-badge status-${s.approvalStatus || 'APPROVED'}`}>{s.approvalStatus || 'APPROVED'}</span>
+                </div></td>
                 <td>👁 {s.views || 0}</td>
                 <td>⭐ {s.averageRating || 0}</td>
                 <td><div style={{ display: 'flex', gap: '0.5rem' }}>

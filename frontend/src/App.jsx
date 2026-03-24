@@ -14,6 +14,7 @@ import ChapterReader from './pages/ChapterReader';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import Statistics from './pages/Statistics';
+import CreatorStudio from './pages/CreatorStudio';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
               <Route path="/story/:id" element={<StoryDetail />} />
               <Route path="/story/:storyId/chapter/:chapterId" element={<ChapterReader />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/studio" element={<CreatorStudio />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/admin/statistics" element={<Statistics />} />
             </Routes>
