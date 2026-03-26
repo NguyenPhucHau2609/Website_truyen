@@ -148,7 +148,11 @@ export default function CreatorStudio() {
       const response = await uploadImage(file);
       setStoryForm((prev) => ({ ...prev, coverImage: response.data.url }));
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      if (error.response?.status === 401) {
+        alert("Phien dang nhap da het han hoac token khong hop le. Vui long dang nhap lai.");
+      } else {
+        alert(error.response?.data?.message || error.message);
+      }
     } finally {
       setCoverUploading(false);
     }
@@ -157,14 +161,43 @@ export default function CreatorStudio() {
   const handleUploadMangaPages = async () => {
     if (!mangaFiles.length) return;
     setPagesUploading(true);
-    setUploadProgress(`Dang upload ${mangaFiles.length} anh...`);
+    setUploadProgress(`Dang chuan bi upload ${mangaFiles.length} anh...`);
     try {
-      const response = await uploadMangaPages(mangaFiles);
+      const response = await uploadMangaPages(mangaFiles, {
+        onBatchComplete: ({ batchIndex, totalBatches, uploadedCount, totalFiles }) => {
+          setUploadProgress(
+            `Dang upload lo ${batchIndex + 1}/${totalBatches} (${uploadedCount}/${totalFiles} anh)...`,
+          );
+        },
+      });
       setChapterForm((prev) => ({ ...prev, pages: [...prev.pages, ...response.data.urls] }));
       setMangaFiles([]);
+      if (mangaInputRef.current) {
+        mangaInputRef.current.value = "";
+      }
       setUploadProgress(`Da upload ${response.data.urls.length} anh.`);
     } catch (error) {
-      setUploadProgress(error.response?.data?.message || error.message);
+      const uploadedUrls = error.uploadedUrls || [];
+      const remainingFiles = error.remainingFiles || [];
+
+      if (uploadedUrls.length) {
+        setChapterForm((prev) => ({ ...prev, pages: [...prev.pages, ...uploadedUrls] }));
+        setMangaFiles(remainingFiles);
+      }
+
+      if (mangaInputRef.current) {
+        mangaInputRef.current.value = "";
+      }
+
+      if (error.response?.status === 401) {
+        setUploadProgress("Phien dang nhap da het han hoac token khong hop le. Vui long dang nhap lai roi upload anh.");
+      } else if (uploadedUrls.length) {
+        setUploadProgress(
+          `Da upload tam ${uploadedUrls.length} anh, con ${remainingFiles.length} anh chua len. ${error.response?.data?.message || error.message}`,
+        );
+      } else {
+        setUploadProgress(error.response?.data?.message || error.message);
+      }
     } finally {
       setPagesUploading(false);
     }
@@ -181,7 +214,11 @@ export default function CreatorStudio() {
       await loadData(selectedStoryId);
       alert("Đã lưu truyện. Truyện đang chờ admin duyệt.");
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      if (error.response?.status === 401) {
+        alert("Phien dang nhap da het han. Vui long dang nhap lai.");
+      } else {
+        alert(error.response?.data?.message || error.message);
+      }
     }
   };
 
@@ -227,7 +264,11 @@ export default function CreatorStudio() {
       resetChapterForm(payload.storyId);
       alert("Đã lưu chương. Chương đang chờ admin duyệt.");
     } catch (error) {
-      alert(error.response?.data?.message || error.message);
+      if (error.response?.status === 401) {
+        alert("Phien dang nhap da het han. Vui long dang nhap lai.");
+      } else {
+        alert(error.response?.data?.message || error.message);
+      }
     }
   };
 

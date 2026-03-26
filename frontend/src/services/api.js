@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = (
+  import.meta.env.VITE_API_URL?.trim() ||
+  (typeof window !== "undefined" ? `${window.location.origin}/api` : "/api")
+).replace(/\/+$/, "");
 export const API_HOST = API_URL.replace(/\/api$/, "");
 
 const api = axios.create({
@@ -8,10 +11,34 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+const MAX_SINGLE_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_MANGA_UPLOAD_BATCH_FILES = 8;
+const MAX_MANGA_UPLOAD_BATCH_BYTES = 20 * 1024 * 1024;
+
+const getStoredUser = () => {
+  try {
+    const rawUser = localStorage.getItem("user");
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch (error) {
+    console.error("Invalid user session in localStorage:", error);
+    localStorage.removeItem("user");
+    return null;
+  }
+};
+
 api.interceptors.request.use((config) => {
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (user && user.accessToken) {
-    config.headers.Authorization = `Bearer ${user.accessToken}`;
+  const user = getStoredUser();
+  const accessToken = user?.accessToken || user?.token;
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    if (typeof config.headers?.setContentType === "function") {
+      config.headers.setContentType(undefined);
+    } else if (config.headers) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
+    }
   }
   return config;
 });
@@ -99,8 +126,8 @@ export const getCommentsByStory = (storyId) =>
   api.get(`/comments/story/${storyId}`);
 export const getCommentsByChapter = (chapterId) =>
   api.get(`/comments/chapter/${chapterId}`);
-export const getCommentsByPage = (chapterId, chapterNumber) =>
-  api.get(`/comments/chapter/${chapterId}/page/${chapterNumber}`);
+export const getCommentsByPage = (chapterId, pageIndex) =>
+  api.get(`/comments/chapter/${chapterId}/page/${pageIndex}`);
 export const createComment = (data) => api.post("/comments", data);
 export const deleteComment = (id) => api.delete(`/comments/${id}`);
 
@@ -148,18 +175,91 @@ export const getDistributionData = () => api.get("/admin/stats/distribution");
 
 // Upload (Cloudinary)
 export const uploadImage = (file) => {
+  validateUploadFiles([file]);
   const fd = new FormData();
   fd.append("file", file);
-  return api.post("/upload/image", fd, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return api.post("/upload/image", fd);
 };
-export const uploadMangaPages = (files) => {
-  const fd = new FormData();
-  files.forEach((f) => fd.append("files", f));
-  return api.post("/upload/images", fd, {
-    headers: { "Content-Type": "multipart/form-data" },
+
+const createMangaUploadBatches = (files) => {
+  const batches = [];
+  let currentBatch = [];
+  let currentBatchBytes = 0;
+
+  files.forEach((file) => {
+    const fileSize = file?.size || 0;
+    const exceedsBatchLimit =
+      currentBatch.length >= MAX_MANGA_UPLOAD_BATCH_FILES ||
+      (currentBatch.length > 0 && currentBatchBytes + fileSize > MAX_MANGA_UPLOAD_BATCH_BYTES);
+
+    if (exceedsBatchLimit) {
+      batches.push(currentBatch);
+      currentBatch = [file];
+      currentBatchBytes = fileSize;
+      return;
+    }
+
+    currentBatch.push(file);
+    currentBatchBytes += fileSize;
   });
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+};
+
+const validateUploadFiles = (files) => {
+  const oversizedFile = files.find((file) => (file?.size || 0) > MAX_SINGLE_UPLOAD_BYTES);
+
+  if (oversizedFile) {
+    const fileSizeMb = ((oversizedFile.size || 0) / (1024 * 1024)).toFixed(1);
+    throw new Error(
+      `Anh "${oversizedFile.name}" co dung luong ${fileSizeMb}MB, vuot gioi han 10MB moi file.`,
+    );
+  }
+};
+
+export const uploadMangaPages = async (files, options = {}) => {
+  const fileList = Array.from(files || []);
+  const { onBatchComplete } = options;
+
+  if (!fileList.length) {
+    return { data: { urls: [] } };
+  }
+
+  validateUploadFiles(fileList);
+
+  const batches = createMangaUploadBatches(fileList);
+  const uploadedUrls = [];
+
+  try {
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+      const fd = new FormData();
+      batches[batchIndex].forEach((file) => fd.append("files", file));
+
+      const response = await api.post("/upload/images", fd);
+      const batchUrls = response.data?.urls || [];
+      uploadedUrls.push(...batchUrls);
+
+      onBatchComplete?.({
+        batchIndex,
+        totalBatches: batches.length,
+        uploadedCount: uploadedUrls.length,
+        totalFiles: fileList.length,
+        batchUrls,
+      });
+    }
+
+    return { data: { urls: uploadedUrls } };
+  } catch (error) {
+    error.uploadedUrls = uploadedUrls;
+    error.uploadedCount = uploadedUrls.length;
+    error.remainingFiles = fileList.slice(uploadedUrls.length);
+    error.totalFiles = fileList.length;
+    throw error;
+  }
 };
 
 export default api;

@@ -9,7 +9,9 @@ app.log
 compile_utf8.log
 compile.log
 curl_out.txt
-application.properties
+.env
+.env.*
+!.env.example
 ### STS ###
 .apt_generated
 .classpath
@@ -38,3 +40,4 @@ build/
 ### VS Code ###
 .vscode/
 boot.log
+application.properties

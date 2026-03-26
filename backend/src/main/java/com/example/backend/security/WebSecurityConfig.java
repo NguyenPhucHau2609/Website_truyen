@@ -1,8 +1,10 @@
 package com.example.backend.security;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,6 +31,9 @@ import com.example.backend.security.services.UserDetailsServiceImpl;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class WebSecurityConfig {
+
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:5173,http://localhost:3000,https://web-tuyen-online.vercel.app,https://web-tuyen-online-*.vercel.app}")
+    private String allowedOriginPatterns;
 
     @Autowired
     UserDetailsServiceImpl userDetailsService;
@@ -60,10 +66,16 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        List<String> origins = Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        configuration.setAllowedOriginPatterns(origins);
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -76,16 +88,17 @@ public class WebSecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
-                    auth.requestMatchers("/api/auth/**").permitAll()
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/stories/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/chapters/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/categories/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/authors/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/comments/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/ratings/story/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/gifs/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/stories/*/views").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/stories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chapters/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/authors/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/ratings/story/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/gifs/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/stories/*/views").permitAll()
                         .anyRequest().authenticated()
                 );
 
